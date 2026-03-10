@@ -3,6 +3,7 @@ import { ZodError, treeifyError } from 'zod'
 
 import { AppError } from '@/core/errors/app-error'
 import { logger } from '@/core/logger/logger'
+import { ValidationError } from '@/core/errors/validation-error'
 
 export const errorHandler = (
   err: Error,
@@ -11,12 +12,7 @@ export const errorHandler = (
   _next: NextFunction
 ): void => {
   if (err instanceof ZodError) {
-    res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: treeifyError(err)
-    })
-    return
+    throw new ValidationError("Validation failed", treeifyError(err))
   }
 
   if (err instanceof AppError) {
