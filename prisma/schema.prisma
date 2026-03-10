@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// BETTER AUTH MODELS
+// ─────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  projects      Project[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────────────────────
+// DEVTRACK MODELS
+// ─────────────────────────────────────────
+
+model Project {
+  id               String    @id @default(uuid())
+  name             String
+  clientName       String
+  clientEmail      String
+  notionDatabaseId String?
+  notionToken      String? // AES encrypted before storing
+  statusMapping    Json? // { "In Progress": "IN_DEV", "Done": "RELEASED" }
+  syncInterval     Int       @default(15) // minutes
+  lastSyncedAt     DateTime?
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  features     Feature[]
+  tickets      Ticket[]
+  clientAccess ClientAccess?
+  syncLogs     SyncLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feature {
+  id    String @id @default(uuid())
+  name  String
+  order Int    @default(0)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id             String       @id @default(uuid())
+  notionPageId   String       @unique // used as upsert key during sync
+  title          String
+  notionStatus   String // raw value from Notion e.g. "In Progress"
+  devtrackStatus TicketStatus @default(TODO)
+  assigneeName   String?
+
+  featureId String?
+  feature   Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  notionUpdatedAt DateTime? // last_edited_time from Notion — used for incremental sync
+  syncedAt        DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TicketStatus {
+  TODO
+  IN_DEV
+  QA
+  APPROVED
+  RELEASED
+  BLOCKED
+}
+
+model ClientAccess {
+  id    String @id @default(uuid())
+  token String @unique @default(uuid()) // the magic link token
+
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model SyncLog {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  status         SyncStatus
+  ticketsAdded   Int        @default(0)
+  ticketsUpdated Int        @default(0)
+  errorMessage   String?
+
+  createdAt DateTime @default(now())
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+  RATE_LIMITED
+}
