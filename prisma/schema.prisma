@@ -12,21 +12,31 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  TEAM_LEADER
+  BUSINESS_ANALYST
+  QUALITY_ASSURANCE
+  DEVELOPER
+}
+
 // ─────────────────────────────────────────
 // BETTER AUTH MODELS
 // ─────────────────────────────────────────
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  projects      Project[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  role Role @default(DEVELOPER)
+
+  sessions Session[]
+  accounts Account[]
+  projects Project[]
 
   @@unique([email])
   @@map("user")
