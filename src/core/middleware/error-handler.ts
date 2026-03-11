@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from 'express'
 import { ZodError, treeifyError } from 'zod'
 
-import { AppError } from '@/core/errors/app-error'
+import { AppError } from '@/core/errors/app.error'
 import { logger } from '@/core/logger/logger'
-import { ValidationError } from '@/core/errors/validation-error'
+import { ValidationError } from '@/core/errors/validation.error'
 import { sendResponse } from '@/core/utils/response'
 
 export const errorHandler = (
