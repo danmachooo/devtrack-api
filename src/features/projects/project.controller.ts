@@ -18,7 +18,7 @@ import type { UserIdentifier } from '@/schemas/user/user.schema'
 export const createProjectController = asyncHandler(
   async (http: HttpContext) => {
     const body: CreateProjectInput = http.req.body
-    const user: UserIdentifier = http.req.user.userId
+    const user: UserIdentifier = http.req.user
 
     const result = await createProject(body, user.id)
 
@@ -30,7 +30,7 @@ export const updateProjectController = asyncHandler(
   async (http: HttpContext) => {
     const body: UpdateProjectInput = http.req.validatedBody
     const project: ProjectIdentifier = http.req.validatedParams
-    const user: UserIdentifier = http.req.user.userId
+    const user: UserIdentifier = http.req.user
 
     const result = await updateProject(project.id, user.id, body)
 
@@ -39,7 +39,7 @@ export const updateProjectController = asyncHandler(
 )
 
 export const getProjectsController = asyncHandler(async (http: HttpContext) => {
-  const user: UserIdentifier = http.req.user.userId
+  const user: UserIdentifier = http.req.user
   const result = await listProjects(user.id)
 
   return sendResponse(http.res, 200, 'Projects has been found.', result)
@@ -48,7 +48,7 @@ export const getProjectsController = asyncHandler(async (http: HttpContext) => {
 export const getProjectByIdController = asyncHandler(
   async (http: HttpContext) => {
     const project: ProjectIdentifier = http.req.validatedParams
-    const user: UserIdentifier = http.req.user.userId
+    const user: UserIdentifier = http.req.user
 
     const result = await listProjectById(project.id, user.id)
 

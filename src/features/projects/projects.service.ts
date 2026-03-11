@@ -1,4 +1,4 @@
-import { NotFoundError } from '@/core/errors/not-found-error'
+import { NotFoundError } from '@/core/errors/not-found.error'
 import {
   deleteProjectRecord,
   findProjectById,
