@@ -7,7 +7,7 @@ declare global {
       user: {
         id: string
         email: string
-        name: string,
+        name: string
         role: Role
       }
       validatedBody: any

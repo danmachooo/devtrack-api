@@ -13,7 +13,7 @@ export const errorHandler = (
   _next: NextFunction
 ): void => {
   if (err instanceof ZodError) {
-    throw new ValidationError("Validation failed.", treeifyError(err))
+    throw new ValidationError('Validation failed.', treeifyError(err))
   }
 
   if (err instanceof AppError) {
@@ -26,5 +26,5 @@ export const errorHandler = (
 
   logger.error('Unexpected error.', { message: err.message, stack: err.stack })
 
-  sendResponse(res, 500, "Internal Server Error.")
+  sendResponse(res, 500, 'Internal Server Error.')
 }
