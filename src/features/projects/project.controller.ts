@@ -1,4 +1,3 @@
-import type { HttpContext } from '@/core/types/http-context.types'
 import { asyncHandler } from '@/core/middleware/async-handler'
 import {
   createProject,
@@ -13,11 +12,12 @@ import type {
   UpdateProjectInput
 } from '@/features/projects/project.schema'
 import { sendResponse } from '@/core/utils/response'
-import type { UserIdentifier } from '@/schemas/user/user.schema'
+import { type UserIdentifier } from '@/schemas/user/user.schema'
+import type { AuthenticatedHttpContext } from '@/common/types/auth.type'
 
 export const createProjectController = asyncHandler(
-  async (http: HttpContext) => {
-    const body: CreateProjectInput = http.req.body
+  async (http: AuthenticatedHttpContext) => {
+    const body: CreateProjectInput = http.req.validatedBody
     const user: UserIdentifier = http.req.user
 
     const result = await createProject(body, user.id)
@@ -27,7 +27,7 @@ export const createProjectController = asyncHandler(
 )
 
 export const updateProjectController = asyncHandler(
-  async (http: HttpContext) => {
+  async (http: AuthenticatedHttpContext) => {
     const body: UpdateProjectInput = http.req.validatedBody
     const project: ProjectIdentifier = http.req.validatedParams
     const user: UserIdentifier = http.req.user
@@ -38,15 +38,17 @@ export const updateProjectController = asyncHandler(
   }
 )
 
-export const getProjectsController = asyncHandler(async (http: HttpContext) => {
-  const user: UserIdentifier = http.req.user
-  const result = await listProjects(user.id)
+export const getProjectsController = asyncHandler(
+  async (http: AuthenticatedHttpContext) => {
+    const user: UserIdentifier = http.req.user
+    const result = await listProjects(user.id)
 
-  return sendResponse(http.res, 200, 'Projects has been found.', result)
-})
+    return sendResponse(http.res, 200, 'Projects has been found.', result)
+  }
+)
 
 export const getProjectByIdController = asyncHandler(
-  async (http: HttpContext) => {
+  async (http: AuthenticatedHttpContext) => {
     const project: ProjectIdentifier = http.req.validatedParams
     const user: UserIdentifier = http.req.user
 
@@ -62,7 +64,7 @@ export const getProjectByIdController = asyncHandler(
 )
 
 export const deleteProjectController = asyncHandler(
-  async (http: HttpContext) => {
+  async (http: AuthenticatedHttpContext) => {
     const project: ProjectIdentifier = http.req.validatedParams
 
     await deleteProject(project.id)
