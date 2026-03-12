@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer'
 
-import { logger } from '@/core/logger/logger'
 import { appConfig } from '@/config/config'
 
 type InvitationEmailInput = {
@@ -10,10 +9,6 @@ type InvitationEmailInput = {
   inviterEmail: string
   role: string
 }
-
-const getMailerConfig = () => {
-  return appConfig.smtp
-} 
 
 const createInvitationEmailHtml = (
   input: InvitationEmailInput,
@@ -31,15 +26,7 @@ const createInvitationEmailHtml = (
 export const sendOrganizationInvitationEmail = async (
   input: InvitationEmailInput
 ): Promise<void> => {
-  const mailerConfig = getMailerConfig()
-
-  if (!mailerConfig) {
-    logger.warn('SMTP configuration is incomplete. Invitation email was not sent.', {
-      email: input.email,
-      invitationId: input.invitationId
-    })
-    return
-  }
+  const mailerConfig = appConfig.smtp
 
   const transport = nodemailer.createTransport({
     host: mailerConfig.host,

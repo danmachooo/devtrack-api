@@ -3,7 +3,7 @@ import type {
   CreateProjectInput,
   UpdateProjectInput
 } from '@/features/projects/project.schema'
-import type { Project } from '@prisma/client'
+import type { Prisma, Project, TicketStatus } from '@prisma/client'
 
 export async function findProjects(userId: string): Promise<Project[]> {
   const projects = await prisma.project.findMany({
@@ -122,6 +122,40 @@ export async function updateProjectRecord(
   })
 
   return updated
+}
+
+export async function updateProjectNotionConnection(
+  projectId: string,
+  notionToken: string,
+  notionDatabaseId: string
+): Promise<Project> {
+  const updatedProject = await prisma.project.update({
+    where: {
+      id: projectId
+    },
+    data: {
+      notionToken,
+      notionDatabaseId
+    }
+  })
+
+  return updatedProject
+}
+
+export async function updateProjectStatusMapping(
+  projectId: string,
+  statusMapping: Record<string, TicketStatus>
+): Promise<Project> {
+  const updatedProject = await prisma.project.update({
+    where: {
+      id: projectId
+    },
+    data: {
+      statusMapping: statusMapping as Prisma.InputJsonObject
+    }
+  })
+
+  return updatedProject
 }
 
 export async function deleteProjectRecord(

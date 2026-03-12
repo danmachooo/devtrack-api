@@ -50,5 +50,10 @@ export const appConfig = {
   },
   frontend: {
     url: env.FRONTEND_URL
+  },
+  notion: {
+    apiBaseUrl: 'https://api.notion.com/v1',
+    apiVersion: '2025-09-03',
+    encryptionKey: env.NOTION_ENCRYPTION_KEY
   }
 } as const

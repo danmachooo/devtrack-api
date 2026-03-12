@@ -2,10 +2,10 @@ import { NotFoundError } from '@/core/errors/not-found.error'
 import { ForbiddenError } from '@/core/errors/forbidden.error'
 import { findProjectById } from '@/features/projects/projects.repo'
 import {
+  countFeaturesByProject,
   deleteFeatureRecord,
   findFeatureById,
   findFeaturesByProject,
-  findLastFeatureByOrder,
   insertFeature,
   updateFeatureRecord
 } from '@/features/features/features.repo'
@@ -43,9 +43,9 @@ export async function createFeature(
 
   if (!project) throw new NotFoundError('Project not found.')
 
-  const lastFeature = await findLastFeatureByOrder(projectId)
-  const nextOrder = lastFeature ? lastFeature.order + 1 : 0
-  const featureOrder = input.order ?? nextOrder
+  const totalFeatures = await countFeaturesByProject(projectId)
+  const nextOrder = totalFeatures
+  const featureOrder = Math.min(input.order ?? nextOrder, totalFeatures)
 
   const feature = await insertFeature(projectId, input, featureOrder)
   return feature
@@ -66,7 +66,17 @@ export async function updateFeature(
     throw new NotFoundError('Feature not found.')
   }
 
-  const updatedFeature = await updateFeatureRecord(featureId, input)
+  const totalFeatures = await countFeaturesByProject(feature.projectId)
+  const maxOrder = totalFeatures - 1
+  const targetOrder = Math.min(input.order ?? feature.order, maxOrder)
+
+  const updatedFeature = await updateFeatureRecord(
+    featureId,
+    feature.projectId,
+    feature.order,
+    targetOrder,
+    input
+  )
   return updatedFeature
 }
 
@@ -84,5 +94,5 @@ export async function deleteFeature(
     throw new NotFoundError('Feature not found.')
   }
 
-  await deleteFeatureRecord(featureId)
+  await deleteFeatureRecord(featureId, feature.projectId, feature.order)
 }
