@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 
 import { logger } from '@/core/logger/logger'
+import { appConfig } from '@/config/config'
 
 type InvitationEmailInput = {
   invitationId: string
@@ -11,25 +12,8 @@ type InvitationEmailInput = {
 }
 
 const getMailerConfig = () => {
-  const host = process.env.SMTP_HOST
-  const port = process.env.SMTP_PORT
-  const user = process.env.SMTP_USER
-  const pass = process.env.SMTP_PASS
-  const from = process.env.SMTP_FROM
-
-  if (!host || !port || !user || !pass || !from) {
-    return null
-  }
-
-  return {
-    host,
-    port: Number(port),
-    secure: process.env.SMTP_SECURE === 'true',
-    user,
-    pass,
-    from
-  }
-}
+  return appConfig.smtp
+} 
 
 const createInvitationEmailHtml = (
   input: InvitationEmailInput,

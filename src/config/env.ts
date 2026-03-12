@@ -19,7 +19,15 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
 
   //frontend
-  FRONTEND_URL: z.url()
+  FRONTEND_URL: z.url(),
+
+  //smtp
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.email().min(1),
+  SMTP_PASS: z.string().min(1),
+  SMTP_FROM: z.string().min(1),
+  SMTP_SECURE: z.boolean().default(false)
 })
 
 export const env = envSchema.parse(process.env)

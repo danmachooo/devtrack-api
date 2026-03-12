@@ -32,6 +32,14 @@ export const appConfig = {
     /** Database connection URL */
     url: env.DATABASE_URL
   },
+  smtp: {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
+    from: env.SMTP_FROM,
+    secure: env.SMTP_SECURE
+  },
 
   auth: {
     /** Secret used by Better Auth for signing tokens */
