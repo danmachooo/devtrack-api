@@ -1,5 +1,15 @@
 import { env } from '@/config/env'
 
+const getNormalizedAuthUrl = (url: string): string => {
+  const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url
+
+  if (normalizedUrl.endsWith('/api/auth')) {
+    return normalizedUrl
+  }
+
+  return `${normalizedUrl}/api/auth`
+}
+
 export const appConfig = {
   /**
    * Core application settings.
@@ -28,7 +38,7 @@ export const appConfig = {
     secret: env.BETTER_AUTH_SECRET,
 
     /** Public URL used by Better Auth */
-    url: env.BETTER_AUTH_URL
+    url: getNormalizedAuthUrl(env.BETTER_AUTH_URL)
   },
   frontend: {
     url: env.FRONTEND_URL

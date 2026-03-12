@@ -34,9 +34,11 @@ model User {
 
   role Role @default(DEVELOPER)
 
-  sessions Session[]
-  accounts Account[]
-  projects Project[]
+  sessions        Session[]
+  accounts        Account[]
+  projects        Project[]
+  memberships     Member[]
+  invitationsSent Invitation[] @relation("InvitationInviter")
 
   @@unique([email])
   @@map("user")
@@ -50,6 +52,7 @@ model Session {
   updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
+  activeOrganizationId String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -90,6 +93,46 @@ model Verification {
   @@map("verification")
 }
 
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  logo        String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     Member[]
+  invitations Invitation[]
+  projects    Project[]
+}
+
+model Member {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model Invitation {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String
+  role           String
+  status         String       @default("pending")
+  expiresAt      DateTime
+  inviterId      String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter        User         @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
 // ─────────────────────────────────────────
 // DEVTRACK MODELS
 // ─────────────────────────────────────────
@@ -105,8 +148,10 @@ model Project {
   syncInterval     Int       @default(15) // minutes
   lastSyncedAt     DateTime?
 
-  createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
 
   features     Feature[]
   tickets      Ticket[]

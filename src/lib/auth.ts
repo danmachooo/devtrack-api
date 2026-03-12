@@ -1,8 +1,14 @@
 import { appConfig } from '@/config/config'
 import { hashPassword, verifyPassword } from '@/core/utils/password'
+import { sendOrganizationInvitationEmail } from '@/lib/mailer'
 import { prisma } from '@/lib/prisma'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { organization } from 'better-auth/plugins/organization'
+import {
+  memberAc,
+  ownerAc
+} from 'better-auth/plugins/organization/access'
 
 export const auth = betterAuth({
   baseURL: appConfig.auth.url,
@@ -14,7 +20,7 @@ export const auth = betterAuth({
       role: {
         type: 'string',
         required: true,
-        defaultValue: 'DEVELOPER',
+        defaultValue: 'TEAM_LEADER',
         input: false
       }
     }
@@ -33,5 +39,26 @@ export const auth = betterAuth({
       maxAge: 5 * 60,
       strategy: 'compact'
     }
-  }
+  },
+  plugins: [
+    organization({
+      allowUserToCreateOrganization: true,
+      creatorRole: 'TEAM_LEADER',
+      sendInvitationEmail: async (data) => {
+        await sendOrganizationInvitationEmail({
+          invitationId: data.id,
+          email: data.email,
+          organizationName: data.organization.name,
+          inviterEmail: data.inviter.user.email,
+          role: data.role
+        })
+      },
+      roles: {
+        TEAM_LEADER: ownerAc,
+        BUSINESS_ANALYST: memberAc,
+        QUALITY_ASSURANCE: memberAc,
+        DEVELOPER: memberAc
+      }
+    })
+  ]
 })

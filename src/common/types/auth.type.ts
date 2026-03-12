@@ -8,6 +8,7 @@ type AuthenticatedUser = {
   email: string
   name: string
   role: Role
+  organizationId?: string
 }
 
 type AuthenticatedRequest = Request & {

@@ -22,6 +22,7 @@ export const errorHandler = (
     }
 
     sendResponse(res, err.statusCode, err.message, err.details)
+    return
   }
 
   logger.error('Unexpected error.', { message: err.message, stack: err.stack })

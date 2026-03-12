@@ -9,6 +9,7 @@ declare global {
         email: string
         name: string
         role: Role
+        organizationId?: string
       }
       validatedBody: any
       validatedParams: any
