@@ -51,7 +51,7 @@ export const sendOrganizationInvitationEmail = async (
     }
   })
 
-  const frontendUrl = process.env.FRONTEND_URL ?? ''
+  const frontendUrl = appConfig.frontend.url
   const acceptUrl = `${frontendUrl}/organization/accept-invitation?id=${input.invitationId}`
 
   await transport.sendMail({
