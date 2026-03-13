@@ -1,8 +1,22 @@
+import {
+  APIErrorCode,
+  ClientErrorCode,
+  isFullDatabase,
+  isFullDataSource,
+  isFullPageOrDataSource,
+  isNotionClientError,
+  iteratePaginatedAPI,
+  type DataSourceObjectResponse,
+  type DatabaseObjectResponse,
+  type PageObjectResponse,
+  type RichTextItemResponse
+} from '@notionhq/client'
 import { TicketStatus, type Prisma, type Project } from '@prisma/client'
 
 import { AppError } from '@/core/errors/app.error'
 import { ForbiddenError } from '@/core/errors/forbidden.error'
 import { NotFoundError } from '@/core/errors/not-found.error'
+import { UnauthorizedError } from '@/core/errors/unauthorized.error'
 import { mapNotionStatusToTicketStatus } from '@/features/notion/notion.mapper'
 import type {
   ConnectNotionInput,
@@ -15,15 +29,7 @@ import {
   updateProjectStatusMapping
 } from '@/features/projects/projects.repo'
 import { decrypt, encrypt } from '@/lib/encryption'
-import {
-  listSearchDataSources,
-  queryDataSourcePages,
-  retrieveDatabase,
-  retrieveDataSource,
-  type NotionDatabaseSummary,
-  type NotionDataSourceSummary,
-  type NotionPage
-} from '@/lib/notion'
+import { createNotionClient } from '@/lib/notion'
 
 type NotionConnectionResponse = {
   projectId: string
@@ -45,12 +51,201 @@ type FetchTicketsResponse = Array<{
   notionUpdatedAt: Date
 }>
 
+type NotionRichText = {
+  plain_text: string
+}
+
+type NotionDatabaseSummary = {
+  id: string
+  title: NotionRichText[]
+  url: string
+  data_sources: Array<{
+    id: string
+    name: string
+  }>
+}
+
+type NotionDataSourceSummary = {
+  object: 'data_source'
+  id: string
+  name: string
+  parent: DataSourceObjectResponse['parent']
+}
+
+type NotionPage = PageObjectResponse
+
+type NotionDataSource = Pick<DataSourceObjectResponse, 'id' | 'title' | 'properties'>
+
+const DEFAULT_PAGE_SIZE = 100
+
 const getPlainText = (value: Array<{ plain_text: string }> | undefined): string => {
   if (!value || value.length === 0) {
     return ''
   }
 
   return value.map((item) => item.plain_text).join('')
+}
+
+const mapNotionError = (error: unknown): never => {
+  if (!isNotionClientError(error)) {
+    throw error
+  }
+
+  switch (error.code) {
+    case APIErrorCode.Unauthorized:
+      throw new UnauthorizedError('Invalid Notion token.')
+    case APIErrorCode.RestrictedResource:
+      throw new ForbiddenError(
+        'Notion integration does not have access to this resource.'
+      )
+    case APIErrorCode.ObjectNotFound:
+      throw new NotFoundError('Notion resource not found.')
+    case APIErrorCode.RateLimited:
+      throw new AppError(429, 'Notion rate limit exceeded.')
+    case APIErrorCode.ValidationError:
+    case APIErrorCode.InvalidRequest:
+    case APIErrorCode.InvalidRequestURL:
+    case APIErrorCode.InvalidJSON:
+      throw new AppError(400, error.message)
+    case APIErrorCode.ConflictError:
+      throw new AppError(409, error.message)
+    case APIErrorCode.InternalServerError:
+    case APIErrorCode.ServiceUnavailable:
+    case ClientErrorCode.RequestTimeout:
+    case ClientErrorCode.ResponseError:
+      throw new AppError(502, 'Notion request failed.')
+    default:
+      throw new AppError(502, 'Notion request failed.')
+  }
+}
+
+const mapRichText = (value: RichTextItemResponse[]): NotionRichText[] => {
+  return value.map((item) => ({
+    plain_text: item.plain_text
+  }))
+}
+
+const mapDatabaseSummary = (
+  database: DatabaseObjectResponse
+): NotionDatabaseSummary => {
+  return {
+    id: database.id,
+    title: mapRichText(database.title),
+    url: database.url,
+    data_sources: database.data_sources.map((dataSource) => ({
+      id: dataSource.id,
+      name: dataSource.name
+    }))
+  }
+}
+
+const retrieveDatabase = async (
+  token: string,
+  databaseId: string
+): Promise<NotionDatabaseSummary> => {
+  try {
+    const notion = createNotionClient(token)
+    const database = await notion.databases.retrieve({
+      database_id: databaseId
+    })
+
+    if (!isFullDatabase(database)) {
+      throw new NotFoundError('Notion database not found.')
+    }
+
+    return mapDatabaseSummary(database)
+  } catch (error) {
+    mapNotionError(error)
+  }
+
+  throw new AppError(502, 'Notion request failed.')
+}
+
+const retrieveDataSource = async (
+  token: string,
+  dataSourceId: string
+): Promise<NotionDataSource> => {
+  try {
+    const notion = createNotionClient(token)
+    const dataSource = await notion.dataSources.retrieve({
+      data_source_id: dataSourceId
+    })
+
+    if (!isFullDataSource(dataSource)) {
+      throw new NotFoundError('Notion data source not found.')
+    }
+
+    return {
+      id: dataSource.id,
+      title: dataSource.title,
+      properties: dataSource.properties
+    }
+  } catch (error) {
+    mapNotionError(error)
+  }
+
+  throw new AppError(502, 'Notion request failed.')
+}
+
+const listSearchDataSources = async (
+  token: string
+): Promise<NotionDataSourceSummary[]> => {
+  try {
+    const notion = createNotionClient(token)
+    const results: NotionDataSourceSummary[] = []
+
+    for await (const result of iteratePaginatedAPI(notion.search, {
+      filter: {
+        property: 'object',
+        value: 'data_source'
+      },
+      page_size: DEFAULT_PAGE_SIZE
+    })) {
+      if (!isFullPageOrDataSource(result) || result.object !== 'data_source') {
+        continue
+      }
+
+      results.push({
+        object: 'data_source',
+        id: result.id,
+        name: result.title.map((item) => item.plain_text).join(''),
+        parent: result.parent
+      })
+    }
+
+    return results
+  } catch (error) {
+    mapNotionError(error)
+  }
+
+  throw new AppError(502, 'Notion request failed.')
+}
+
+const queryDataSourcePages = async (
+  token: string,
+  dataSourceId: string
+): Promise<NotionPage[]> => {
+  try {
+    const notion = createNotionClient(token)
+    const pages: NotionPage[] = []
+
+    for await (const result of iteratePaginatedAPI(notion.dataSources.query, {
+      data_source_id: dataSourceId,
+      page_size: DEFAULT_PAGE_SIZE
+    })) {
+      if (!isFullPageOrDataSource(result) || result.object !== 'page') {
+        continue
+      }
+
+      pages.push(result)
+    }
+
+    return pages
+  } catch (error) {
+    mapNotionError(error)
+  }
+
+  throw new AppError(502, 'Notion request failed.')
 }
 
 const getProjectOrThrow = async (
@@ -175,11 +370,11 @@ const getStatusFromPage = (page: NotionPage): string => {
     return 'TODO'
   }
 
-  if (statusProperty.status?.name) {
+  if (statusProperty.type === 'status' && statusProperty.status?.name) {
     return statusProperty.status.name
   }
 
-  if (statusProperty.select?.name) {
+  if (statusProperty.type === 'select' && statusProperty.select?.name) {
     return statusProperty.select.name
   }
 
@@ -196,7 +391,7 @@ const getAssigneeFromPage = (page: NotionPage): string | null => {
   }
 
   const names = peopleProperty.people
-    .map((person) => person.name)
+    .map((person) => ('name' in person ? person.name : null))
     .filter((name): name is string => Boolean(name))
 
   return names.length > 0 ? names.join(', ') : null

@@ -27,7 +27,7 @@ const envSchema = z.object({
   SMTP_USER: z.email().min(1),
   SMTP_PASS: z.string().min(1),
   SMTP_FROM: z.string().min(1),
-  SMTP_SECURE: z.boolean().default(false),
+  SMTP_SECURE: z.coerce.boolean().default(false),
 
   // notion
   NOTION_ENCRYPTION_KEY: z.string().min(32)

@@ -83,17 +83,17 @@
 
 ## Phase 4 - Notion Integration
 
-- [~] `src/lib/encryption.ts` - AES encrypt / decrypt for storing Notion tokens
-- [~] `src/lib/notion.ts` - Notion API client wrapper
-- [~] `src/features/notion/notion.schema.ts` - Zod schemas for connect and mapping
-- [~] `src/features/notion/notion.service.ts` - testConnection, listDatabases, fetchTickets
-- [~] `src/features/notion/notion.mapper.ts` - maps Notion status to DevTrack `TicketStatus`
-- [~] `src/features/notion/notion.controller.ts`
-- [~] `src/features/notion/notion.routes.ts`
-- [~] `POST /api/projects/:id/notion/connect` - save encrypted token + database ID
-- [~] `POST /api/projects/:id/notion/test` - test connection, return database info
-- [~] `GET  /api/projects/:id/notion/databases` - list accessible Notion databases
-- [~] `POST /api/projects/:id/notion/mapping` - save status field mapping as JSON
+- [x] `src/lib/encryption.ts` - AES encrypt / decrypt for storing Notion tokens
+- [x] `src/lib/notion.ts` - Notion API client wrapper
+- [x] `src/features/notion/notion.schema.ts` - Zod schemas for connect and mapping
+- [x] `src/features/notion/notion.service.ts` - testConnection, listDatabases, fetchTickets
+- [x] `src/features/notion/notion.mapper.ts` - maps Notion status to DevTrack `TicketStatus`
+- [x] `src/features/notion/notion.controller.ts`
+- [x] `src/features/notion/notion.routes.ts`
+- [x] `POST /api/projects/:id/notion/connect` - save encrypted token + database ID
+- [x] `POST /api/projects/:id/notion/test` - test connection, return database info
+- [x] `GET  /api/projects/:id/notion/databases` - list accessible Notion databases
+- [x] `POST /api/projects/:id/notion/mapping` - save status field mapping as JSON
 
 ---
 
