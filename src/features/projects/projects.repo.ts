@@ -5,7 +5,57 @@ import type {
 } from '@/features/projects/project.schema'
 import type { Prisma, Project, TicketStatus } from '@prisma/client'
 
-export async function findProjects(userId: string): Promise<Project[]> {
+const safeProjectSelect = {
+  id: true,
+  name: true,
+  clientName: true,
+  clientEmail: true,
+  notionDatabaseId: true,
+  statusMapping: true,
+  syncInterval: true,
+  lastSyncedAt: true,
+  organizationId: true,
+  createdById: true,
+  createdAt: true,
+  updatedAt: true,
+  clientAccess: {
+    select: {
+      id: true,
+      projectId: true,
+      lastViewedAt: true,
+      createdAt: true
+    }
+  },
+  _count: {
+    select: {
+      tickets: true
+    }
+  }
+} satisfies Prisma.ProjectSelect
+
+const safeProjectWithOrderedFeaturesSelect = {
+  ...safeProjectSelect,
+  features: {
+    orderBy: {
+      order: 'asc'
+    }
+  }
+} satisfies Prisma.ProjectSelect
+
+const safeProjectWithFeaturesSelect = {
+  ...safeProjectSelect,
+  features: true
+} satisfies Prisma.ProjectSelect
+
+export type SafeProject = Prisma.ProjectGetPayload<{
+  select: typeof safeProjectWithFeaturesSelect
+}>
+
+export type SafeProjectWithOrderedFeatures = Prisma.ProjectGetPayload<{
+  select: typeof safeProjectWithOrderedFeaturesSelect
+}>
+
+export async function findProjects(userId: string): Promise<SafeProject[]> {
   const projects = await prisma.project.findMany({
     where: {
       organizationId: userId
@@ -13,15 +63,7 @@ export async function findProjects(userId: string): Promise<Project[]> {
     orderBy: {
       createdAt: 'desc'
     },
-    include: {
-      features: true,
-      clientAccess: true,
-      _count: {
-        select: {
-          tickets: true
-        }
-      }
-    }
+    select: safeProjectWithFeaturesSelect
   })
 
   return projects
@@ -30,24 +72,39 @@ export async function findProjects(userId: string): Promise<Project[]> {
 export async function findProjectById(
   projectId: string,
   organizationId: string
-): Promise<Project | null> {
+): Promise<SafeProjectWithOrderedFeatures | null> {
   const project = await prisma.project.findFirst({
     where: {
       id: projectId,
       organizationId
     },
-    include: {
-      features: {
-        orderBy: {
-          order: 'asc'
-        }
-      },
-      clientAccess: true,
-      _count: {
-        select: {
-          tickets: true
-        }
-      }
+    select: safeProjectWithOrderedFeaturesSelect
+  })
+
+  return project
+}
+
+export async function findProjectByIdWithSecrets(
+  projectId: string,
+  organizationId: string
+): Promise<Project | null> {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      organizationId
+    }
+  })
+}
+
+export async function findProjectRecordById(
+  projectId: string
+): Promise<Pick<Project, 'id'> | null> {
+  const project = await prisma.project.findUnique({
+    where: {
+      id: projectId
+    },
+    select: {
+      id: true
     }
   })
 
@@ -57,25 +114,13 @@ export async function findProjectById(
 export async function findProjectByIdOrThrow(
   projectId: string,
   organizationId: string
-): Promise<Project | null> {
+): Promise<SafeProjectWithOrderedFeatures | null> {
   const project = await prisma.project.findFirstOrThrow({
     where: {
       id: projectId,
       organizationId
     },
-    include: {
-      features: {
-        orderBy: {
-          order: 'asc'
-        }
-      },
-      clientAccess: true,
-      _count: {
-        select: {
-          tickets: true
-        }
-      }
-    }
+    select: safeProjectWithOrderedFeaturesSelect
   })
 
   return project
@@ -85,7 +130,7 @@ export async function insertProject(
   input: CreateProjectInput,
   userId: string,
   organizationId: string
-): Promise<Project> {
+): Promise<SafeProject> {
   const project = await prisma.project.create({
     data: {
       name: input.name,
@@ -97,9 +142,7 @@ export async function insertProject(
         create: {}
       }
     },
-    include: {
-      clientAccess: true
-    }
+    select: safeProjectWithFeaturesSelect
   })
 
   return project
@@ -108,7 +151,7 @@ export async function insertProject(
 export async function updateProjectRecord(
   projectId: string,
   input: UpdateProjectInput
-): Promise<Project> {
+): Promise<SafeProject> {
   const updated = await prisma.project.update({
     where: {
       id: projectId
@@ -118,7 +161,8 @@ export async function updateProjectRecord(
       clientName: input.clientName,
       clientEmail: input.clientEmail,
       syncInterval: input.syncInterval
-    }
+    },
+    select: safeProjectWithFeaturesSelect
   })
 
   return updated
@@ -166,6 +210,30 @@ export async function deleteProjectRecord(
     where: {
       id: projectId,
       organizationId
+    }
+  })
+}
+
+export async function findProjectClientAccessById(
+  projectId: string,
+  organizationId: string
+) {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      organizationId
+    },
+    select: {
+      id: true,
+      clientAccess: {
+        select: {
+          id: true,
+          token: true,
+          projectId: true,
+          lastViewedAt: true,
+          createdAt: true
+        }
+      }
     }
   })
 }

@@ -112,33 +112,37 @@
 
 ## Phase 6 - Tickets
 
-- [ ] `src/features/tickets/ticket.schema.ts` - Zod schema for assignment and filters
-- [ ] `src/features/tickets/tickets.repo.ts` - Prisma queries
-- [ ] `src/features/tickets/tickets.service.ts` - assignTicketToFeature, getTicketsByProject
-- [ ] `src/features/tickets/ticket.controller.ts`
-- [ ] `src/features/tickets/ticket.routes.ts`
-- [ ] `GET   /api/projects/:id/tickets` - list tickets, supports filters (unassigned, by feature, by status)
-- [ ] `PATCH /api/tickets/:id/feature` - assign or unassign ticket to a feature
+- [x] `src/features/tickets/ticket.schema.ts` - Zod schema for assignment and filters
+- [x] `src/features/tickets/tickets.repo.ts` - Prisma queries
+- [x] `src/features/tickets/tickets.service.ts` - assignTicketToFeature, getTicketsByProject
+- [x] `src/features/tickets/ticket.controller.ts`
+- [x] `src/features/tickets/ticket.routes.ts`
+- [x] `GET   /api/projects/:id/tickets` - list tickets, supports filters (unassigned, by feature, by status)
+- [x] `PATCH /api/tickets/:id/feature` - assign or unassign ticket to a feature
+- [x] Smoke test ticket listing, filtering, assignment, unassignment, and cross-project rejection
 
 ---
 
 ## Phase 7 - Progress
 
-- [ ] `src/features/progress/progress.service.ts`
-- [ ] `calculateFeatureProgress(featureId)` - percentage based on `RELEASED` + `APPROVED` tickets
-- [ ] `calculateProjectProgress(projectId)` - average progress across all features
-- [ ] Progress recalculates automatically after every sync
+- [x] `src/features/progress/progress.service.ts`
+- [x] `calculateFeatureProgress(featureId)` - percentage based on `RELEASED` + `APPROVED` tickets
+- [x] `calculateProjectProgress(projectId)` - average progress across all features
+- [x] Progress reflects the latest synced ticket data when calculated after every sync
 
 ---
 
 ## Phase 8 - Client Dashboard
 
-- [ ] `src/common/middleware/require-client-auth.middleware.ts` - validates magic link token, attaches project to request
-- [ ] `src/features/client/client.service.ts` - getClientAccessByToken, getClientDashboardData
-- [ ] `src/features/client/client.controller.ts`
-- [ ] `src/features/client/client.routes.ts`
-- [ ] `GET /api/client/:token` - public endpoint, returns project name, overall progress, features with progress and status, recent activity
-- [ ] Update `ClientAccess.lastViewedAt` on every request
+- [x] `src/common/middleware/require-client-auth.middleware.ts` - validates magic link token, attaches project to request
+- [x] `src/features/client/client.service.ts` - getClientAccessByToken, getClientDashboardData
+- [x] `src/features/client/client.controller.ts`
+- [x] `src/features/client/client.routes.ts`
+- [x] `GET /api/client/:token` - public endpoint, returns project name, overall progress, features with progress and status, recent activity
+- [x] Update `ClientAccess.lastViewedAt` on every request
+- [x] `GET /api/projects/:id/client-access` - protected endpoint for BA/TL to get the current shareable client access link
+- [x] Return a frontend-ready `clientAccessLink` value instead of requiring BA/TL to manually build the URL
+- [x] Restrict client access link retrieval to `TEAM_LEADER` and `BUSINESS_ANALYST`
 
 ---
 

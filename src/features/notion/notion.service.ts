@@ -28,7 +28,7 @@ import type {
   TestNotionConnectionInput
 } from '@/features/notion/notion.schema'
 import {
-  findProjectById,
+  findProjectByIdWithSecrets,
   updateProjectNotionConnection,
   updateProjectStatusMapping
 } from '@/features/projects/projects.repo'
@@ -252,7 +252,7 @@ const getProjectOrThrow = async (
     throw new ForbiddenError('No active organization selected.')
   }
 
-  const project = await findProjectById(projectId, organizationId)
+  const project = await findProjectByIdWithSecrets(projectId, organizationId)
 
   if (!project) {
     throw new NotFoundError('Project not found.')

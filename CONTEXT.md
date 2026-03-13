@@ -24,9 +24,12 @@ The repo has completed:
 - features CRUD
 - Notion integration
 - Phase 5 - Ticket Sync
+- Phase 6 - Tickets
+- Phase 7 - Progress
+- Phase 8 - Client Dashboard
 
 The next major build target is:
-- Phase 6 - Tickets
+- Phase 9 - Sync Logs
 
 ---
 
@@ -79,6 +82,8 @@ Important files and what they do:
 - `src/features/projects/*` - org-scoped project CRUD
 - `src/features/features/*` - org-scoped feature CRUD with stable ordering
 - `src/features/notion/*` - Notion connect, test, database listing, and status mapping
+- `src/features/progress/*` - on-demand feature and project progress calculation from synced ticket data
+- `src/features/tickets/*` - org-scoped ticket listing and feature assignment
 - `src/workers/*` - BullMQ queue, recurring scheduler, and worker runtime for Notion ticket sync
 - `src/worker.ts` - separate background worker process entry point
 
@@ -211,7 +216,10 @@ Client-facing grouping of work under a project. Feature CRUD is implemented and 
 Synced from Notion, optionally assigned to a feature, and updated through recurring or manual sync. Missing source tickets are marked with `isMissingFromSource` instead of being deleted.
 
 ### ClientAccess
-Per-project token for the public client dashboard.
+Per-project token for the public client dashboard. The client dashboard is exposed
+through `GET /api/client/:token`, and internal users with `TEAM_LEADER` or
+`BUSINESS_ANALYST` can fetch a frontend-ready shareable link through
+`GET /api/projects/:id/client-access`.
 
 ### SyncLog
 One record per sync job execution.
@@ -220,7 +228,8 @@ One record per sync job execution.
 
 ## What Is Already Verified
 
-Phases 2.5, 3, 4, and 5 were verified through Postman, worker runs, and service-level checks.
+Phases 2.5, 3, 4, 5, 6, 7, and 8 were verified through Postman, worker runs,
+service-level checks, and live API smoke testing.
 
 Verified flows:
 - sign up
@@ -252,6 +261,21 @@ Verified flows:
 - upsert `Ticket` rows and update `Project.lastSyncedAt` during sync
 - write `SyncLog` rows for successful sync runs
 - mark missing Notion tickets with `isMissingFromSource` and `missingFromSourceAt`
+- list project tickets with filters for `featureId`, `status`, `unassigned`, and `showMissing`
+- assign and unassign tickets from features through `PATCH /api/tickets/:id/feature`
+- reject conflicting ticket filters such as `featureId` plus `unassigned=true`
+- reject cross-project feature assignment with `NotFound` behavior
+- calculate feature progress from assigned non-missing tickets using `APPROVED` plus `RELEASED` as complete
+- calculate project progress as the average of feature progress values while ignoring unassigned tickets
+- smoke test progress calculation against live project data with expected `50%` feature and project progress output
+- fetch a protected frontend-ready client access link through `GET /api/projects/:id/client-access`
+- verify `TEAM_LEADER` and `BUSINESS_ANALYST` can access the share-link endpoint
+- verify cross-organization access to project client links is rejected
+- load the public client dashboard through `GET /api/client/:token`
+- verify invalid client tokens are rejected
+- verify `ClientAccess.lastViewedAt` updates after successful client dashboard access
+- verify normal project responses no longer expose raw `clientAccess.token`
+- verify normal project responses no longer expose `notionToken`
 
 ---
 
@@ -270,13 +294,10 @@ Verified flows:
 
 Build order from this point:
 
-1. Ticket management
-2. Progress calculation
-3. Client dashboard
-4. Sync logs
+1. Sync logs
 
 Immediate next target:
-- implement Phase 6 - Tickets using the existing projects/features/notion patterns
+- implement Phase 9 - Sync Logs
 
 ---
 

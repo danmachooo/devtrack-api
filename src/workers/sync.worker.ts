@@ -13,6 +13,7 @@ import {
   insertSyncLog,
   persistTicketSync
 } from '@/features/notion/notion.repo'
+import { calculateProjectProgress } from '@/features/progress/progress.service'
 import { createRedisConnection } from '@/lib/redis'
 import { getBullMqConnectionOptions } from '@/lib/redis'
 import {
@@ -98,6 +99,7 @@ const processSyncJob = async (data: SyncJobData) => {
     const tickets = await fetchTicketsForSync(data.projectId)
     const syncedAt = new Date()
     const persisted = await persistTicketSync(data.projectId, tickets, syncedAt)
+    const projectProgress = await calculateProjectProgress(data.projectId)
 
     await insertSyncLog(
       data.projectId,
@@ -109,6 +111,7 @@ const processSyncJob = async (data: SyncJobData) => {
     return {
       projectId: data.projectId,
       skipped: false,
+      projectProgress,
       ...persisted
     }
   } catch (error) {
