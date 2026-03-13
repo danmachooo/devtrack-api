@@ -32,6 +32,9 @@ export const appConfig = {
     /** Database connection URL */
     url: env.DATABASE_URL
   },
+  /**
+   * SMTP configuration
+   */
   smtp: {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
@@ -41,6 +44,9 @@ export const appConfig = {
     secure: env.SMTP_SECURE
   },
 
+  /**
+   * Auth configuration
+   */
   auth: {
     /** Secret used by Better Auth for signing tokens */
     secret: env.BETTER_AUTH_SECRET,
@@ -48,9 +54,26 @@ export const appConfig = {
     /** Public URL used by Better Auth */
     url: getNormalizedAuthUrl(env.BETTER_AUTH_URL)
   },
+
+  /**
+   * Encryption configuration
+   */
+  crypto: {
+    algo: 'aes-256-gcm',
+    iv_len: Number(12),
+    auth_tag_len: Number(16),
+    encryption_segment_count: Number(3)
+  },
+  /**
+   * Frontend configuration
+   */
   frontend: {
     url: env.FRONTEND_URL
   },
+
+  /**
+   * Notion configuration
+   */
   notion: {
     apiBaseUrl: 'https://api.notion.com/v1',
     apiVersion: '2025-09-03',

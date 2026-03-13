@@ -3,10 +3,10 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { appConfig } from '@/config/config'
 import { AppError } from '@/core/errors/app.error'
 
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm'
-const IV_LENGTH = 12
-const AUTH_TAG_LENGTH = 16
-const ENCRYPTION_SEGMENT_COUNT = 3
+const ENCRYPTION_ALGORITHM = appConfig.crypto.algo
+const IV_LENGTH = appConfig.crypto.iv_len
+const AUTH_TAG_LENGTH = appConfig.crypto.auth_tag_len
+const ENCRYPTION_SEGMENT_COUNT = appConfig.crypto.encryption_segment_count
 
 const getEncryptionKey = (): Buffer => {
   return createHash('sha256')
