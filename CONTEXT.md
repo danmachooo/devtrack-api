@@ -27,9 +27,10 @@ The repo has completed:
 - Phase 6 - Tickets
 - Phase 7 - Progress
 - Phase 8 - Client Dashboard
+- Phase 9 - Sync Logs
 
 The next major build target is:
-- Phase 9 - Sync Logs
+- Phase 10 - Deploy
 
 ---
 
@@ -84,6 +85,7 @@ Important files and what they do:
 - `src/features/notion/*` - Notion connect, test, database listing, and status mapping
 - `src/features/progress/*` - on-demand feature and project progress calculation from synced ticket data
 - `src/features/tickets/*` - org-scoped ticket listing and feature assignment
+- `src/features/sync-logs/*` - org-scoped sync log listing for recent project sync history
 - `src/workers/*` - BullMQ queue, recurring scheduler, and worker runtime for Notion ticket sync
 - `src/worker.ts` - separate background worker process entry point
 
@@ -228,7 +230,7 @@ One record per sync job execution.
 
 ## What Is Already Verified
 
-Phases 2.5, 3, 4, 5, 6, 7, and 8 were verified through Postman, worker runs,
+Phases 2.5, 3, 4, 5, 6, 7, 8, and 9 were verified through Postman, worker runs,
 service-level checks, and live API smoke testing.
 
 Verified flows:
@@ -276,6 +278,9 @@ Verified flows:
 - verify `ClientAccess.lastViewedAt` updates after successful client dashboard access
 - verify normal project responses no longer expose raw `clientAccess.token`
 - verify normal project responses no longer expose `notionToken`
+- list recent project sync logs through `GET /api/projects/:id/sync/logs`
+- verify sync log `limit` query validation and default behavior
+- verify cross-organization access to project sync logs is rejected
 
 ---
 
@@ -294,10 +299,10 @@ Verified flows:
 
 Build order from this point:
 
-1. Sync logs
+1. Deploy
 
 Immediate next target:
-- implement Phase 9 - Sync Logs
+- implement Phase 10 - Deploy
 
 ---
 
