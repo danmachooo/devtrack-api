@@ -148,11 +148,11 @@
 
 ## Phase 9 - Sync Logs
 
-- [ ] `src/features/sync-logs/sync-logs.repo.ts`
-- [ ] `src/features/sync-logs/sync-logs.service.ts`
-- [ ] `src/features/sync-logs/sync-logs.controller.ts`
-- [ ] `src/features/sync-logs/sync-logs.routes.ts`
-- [ ] `GET /api/projects/:id/sync/logs` - return last N sync events for a project
+- [x] `src/features/sync-logs/sync-logs.repo.ts`
+- [x] `src/features/sync-logs/sync-logs.service.ts`
+- [x] `src/features/sync-logs/sync-logs.controller.ts`
+- [x] `src/features/sync-logs/sync-logs.routes.ts`
+- [x] `GET /api/projects/:id/sync/logs` - return last N sync events for a project
 
 ---
 

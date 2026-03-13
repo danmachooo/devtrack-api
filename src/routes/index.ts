@@ -8,6 +8,7 @@ import {
 } from '@/features/features/feature.routes'
 import { notionRouter } from '@/features/notion/notion.routes'
 import { organizationRouter } from '@/features/organization/organization.routes'
+import { syncLogsRouter } from '@/features/sync-logs/sync-logs.routes'
 import {
   projectTicketRouter,
   ticketRouter
@@ -31,6 +32,8 @@ apiRouter.use(
 apiRouter.use('/projects/:projectId/features', requireAuthMiddleware, projectFeatureRouter)
 
 apiRouter.use('/projects/:id/notion', requireAuthMiddleware, notionRouter)
+
+apiRouter.use('/projects/:id/sync', requireAuthMiddleware, syncLogsRouter)
 
 apiRouter.use('/projects/:id/tickets', requireAuthMiddleware, projectTicketRouter)
 
