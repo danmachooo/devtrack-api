@@ -3,6 +3,7 @@ import { validateBody, validateParams } from '@/core/middleware/validate'
 import {
   createProjectController,
   deleteProjectController,
+  getProjectClientAccessController,
   getProjectByIdController,
   getProjectsController,
   updateProjectController
@@ -37,6 +38,13 @@ router.get(
   ),
   validateParams(projectIdentifierSchema),
   getProjectByIdController
+)
+
+router.get(
+  '/:id/client-access',
+  requireRoleMiddleware('TEAM_LEADER', 'BUSINESS_ANALYST'),
+  validateParams(projectIdentifierSchema),
+  getProjectClientAccessController
 )
 
 router.post(

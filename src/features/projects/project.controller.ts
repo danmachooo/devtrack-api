@@ -2,6 +2,7 @@ import { asyncHandler } from '@/core/middleware/async-handler'
 import {
   createProject,
   deleteProject,
+  getProjectClientAccessLink,
   listProjectById,
   listProjects,
   updateProject
@@ -60,6 +61,24 @@ export const getProjectByIdController = asyncHandler(
       http.res,
       200,
       `Project #${result.id} has been found.`,
+      result
+    )
+  }
+)
+
+export const getProjectClientAccessController = asyncHandler(
+  async (http: AuthenticatedHttpContext) => {
+    const project: ProjectIdentifier = http.req.validatedParams
+
+    const result = await getProjectClientAccessLink(
+      project.id,
+      http.req.user.organizationId
+    )
+
+    return sendResponse(
+      http.res,
+      200,
+      'Client access link has been found.',
       result
     )
   }
