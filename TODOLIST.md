@@ -106,6 +106,7 @@
 - [x] Notion rate limit handling - retry with backoff on 429
 - [x] Write one `SyncLog` row per job execution - success or failure
 - [x] `POST /api/projects/:id/notion/sync` - manual sync trigger
+- [x] Verify scheduled and manual sync behavior against a real Notion-connected project
 
 ---
 

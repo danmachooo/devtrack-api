@@ -23,9 +23,10 @@ The repo has completed:
 - auth and organization management
 - features CRUD
 - Notion integration
+- Phase 5 - Ticket Sync
 
 The next major build target is:
-- Phase 5 - Ticket Sync
+- Phase 6 - Tickets
 
 ---
 
@@ -78,6 +79,8 @@ Important files and what they do:
 - `src/features/projects/*` - org-scoped project CRUD
 - `src/features/features/*` - org-scoped feature CRUD with stable ordering
 - `src/features/notion/*` - Notion connect, test, database listing, and status mapping
+- `src/workers/*` - BullMQ queue, recurring scheduler, and worker runtime for Notion ticket sync
+- `src/worker.ts` - separate background worker process entry point
 
 ---
 
@@ -205,7 +208,7 @@ Belongs to an organization. Holds client info, Notion config, sync config, and p
 Client-facing grouping of work under a project. Feature CRUD is implemented and scoped through project ownership.
 
 ### Ticket
-Will be synced from Notion and optionally assigned to a feature. Notion fetch and status mapping are implemented; sync persistence is the next build step.
+Synced from Notion, optionally assigned to a feature, and updated through recurring or manual sync. Missing source tickets are marked with `isMissingFromSource` instead of being deleted.
 
 ### ClientAccess
 Per-project token for the public client dashboard.
@@ -217,7 +220,7 @@ One record per sync job execution.
 
 ## What Is Already Verified
 
-Phases 2.5, 3, and 4 were verified through Postman and service-level checks.
+Phases 2.5, 3, 4, and 5 were verified through Postman, worker runs, and service-level checks.
 
 Verified flows:
 - sign up
@@ -243,6 +246,12 @@ Verified flows:
 - list accessible Notion databases for a connected project
 - save Notion-to-DevTrack status mappings
 - fetch Notion pages and verify title, status, assignee, and mapped `TicketStatus`
+- enqueue manual ticket sync jobs through `POST /api/projects/:id/notion/sync`
+- dedupe sync requests when a project already has a queued or active sync job
+- process recurring sync jobs using `Project.syncInterval`
+- upsert `Ticket` rows and update `Project.lastSyncedAt` during sync
+- write `SyncLog` rows for successful sync runs
+- mark missing Notion tickets with `isMissingFromSource` and `missingFromSourceAt`
 
 ---
 
@@ -252,6 +261,8 @@ Verified flows:
 - `organization/set-active` may succeed without returning a useful response body, so success is determined by HTTP status, not payload presence.
 - A fresh login creates a new session, so active organization restoration is handled explicitly when the user belongs to exactly one org.
 - If multi-org membership is introduced later, the app will need an explicit "switch active organization" endpoint instead of relying on single-org restoration.
+- BullMQ custom job IDs cannot contain `:`, so manual sync job IDs use `manual-project-sync-<projectId>`.
+- Recurring sync jobs are persisted in Redis by BullMQ, so stopping the worker does not clear queued scheduled jobs.
 
 ---
 
@@ -259,14 +270,13 @@ Verified flows:
 
 Build order from this point:
 
-1. Ticket sync
-2. Ticket management
-3. Progress calculation
-4. Client dashboard
-5. Sync logs
+1. Ticket management
+2. Progress calculation
+3. Client dashboard
+4. Sync logs
 
 Immediate next target:
-- implement Phase 5 - Ticket Sync using the existing projects/features/notion patterns
+- implement Phase 6 - Tickets using the existing projects/features/notion patterns
 
 ---
 
