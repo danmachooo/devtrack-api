@@ -9,6 +9,7 @@ import type {
 } from '@/features/notion/notion.schema'
 import {
   connectNotion,
+  enqueueManualSync,
   listDatabases,
   saveStatusMapping,
   testConnection
@@ -73,5 +74,22 @@ export const saveStatusMappingController = asyncHandler(
       'Notion status mapping has been saved.',
       result
     )
+  }
+)
+
+export const enqueueManualSyncController = asyncHandler(
+  async (http: AuthenticatedHttpContext) => {
+    const project: ProjectNotionIdentifier = http.req.validatedParams
+    const result = await enqueueManualSync(
+      project.id,
+      http.req.user.organizationId
+    )
+
+    const statusCode = result.alreadyQueued ? 200 : 202
+    const message = result.alreadyQueued
+      ? 'Project sync already scheduled.'
+      : 'Project sync scheduled successfully.'
+
+    return sendResponse(http.res, statusCode, message, result)
   }
 )

@@ -4,6 +4,7 @@ import { requireRoleMiddleware } from '@/common/middleware/require-role.middlewa
 import { validateBody, validateParams } from '@/core/middleware/validate'
 import {
   connectNotionController,
+  enqueueManualSyncController,
   listNotionDatabasesController,
   saveStatusMappingController,
   testNotionConnectionController
@@ -38,6 +39,13 @@ notionRouter.get(
   requireRoleMiddleware('TEAM_LEADER'),
   validateParams(projectNotionIdentifierSchema),
   listNotionDatabasesController
+)
+
+notionRouter.post(
+  '/sync',
+  requireRoleMiddleware('TEAM_LEADER', 'BUSINESS_ANALYST'),
+  validateParams(projectNotionIdentifierSchema),
+  enqueueManualSyncController
 )
 
 notionRouter.post(

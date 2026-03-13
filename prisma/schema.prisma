@@ -183,6 +183,8 @@ model Ticket {
   notionStatus   String // raw value from Notion e.g. "In Progress"
   devtrackStatus TicketStatus @default(TODO)
   assigneeName   String?
+  isMissingFromSource Boolean  @default(false)
+  missingFromSourceAt DateTime?
 
   featureId String?
   feature   Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
