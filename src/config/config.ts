@@ -33,6 +33,23 @@ export const appConfig = {
     url: env.DATABASE_URL
   },
   /**
+   * Redis configuration.
+   */
+  redis: {
+    upstash: {
+      tcp: {
+        url: env.UPSTASH_REDIS_TCP_URL
+      }
+    },
+    url: env.REDIS_URL,
+    port: env.REDIS_PORT,
+    host: env.REDIS_HOST,
+    username: env.REDIS_USERNAME,
+    db_index: env.REDIS_DB_INDEX,
+    password: env.REDIS_PASSWORD,
+    queuePrefix: 'devtrack'
+  },
+  /**
    * SMTP configuration
    */
   smtp: {

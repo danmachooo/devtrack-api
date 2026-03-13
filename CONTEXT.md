@@ -21,9 +21,11 @@ The repo has completed:
 - foundation setup
 - projects CRUD
 - auth and organization management
+- features CRUD
+- Notion integration
 
 The next major build target is:
-- Phase 3 - Features CRUD
+- Phase 5 - Ticket Sync
 
 ---
 
@@ -67,11 +69,15 @@ Important files and what they do:
 
 - `src/lib/auth.ts` - Better Auth instance, organizations plugin, auth callbacks
 - `src/lib/prisma.ts` - Prisma client singleton
+- `src/lib/encryption.ts` - AES-GCM helpers for encrypting stored Notion tokens
+- `src/lib/notion.ts` - Notion SDK client factory
 - `src/common/middleware/require-auth.middleware.ts` - resolves the current session and attaches `req.user`
 - `src/common/middleware/require-role.middleware.ts` - RBAC middleware
 - `src/features/auth/*` - auth endpoints and session shaping
 - `src/features/organization/*` - organization, invitation, and membership flows
 - `src/features/projects/*` - org-scoped project CRUD
+- `src/features/features/*` - org-scoped feature CRUD with stable ordering
+- `src/features/notion/*` - Notion connect, test, database listing, and status mapping
 
 ---
 
@@ -196,10 +202,10 @@ Pending, accepted, rejected, or canceled org invite tracked by Better Auth.
 Belongs to an organization. Holds client info, Notion config, sync config, and progress-related records.
 
 ### Feature
-Client-facing grouping of work under a project. Phase 3 will build this out.
+Client-facing grouping of work under a project. Feature CRUD is implemented and scoped through project ownership.
 
 ### Ticket
-Will be synced from Notion and optionally assigned to a feature.
+Will be synced from Notion and optionally assigned to a feature. Notion fetch and status mapping are implemented; sync persistence is the next build step.
 
 ### ClientAccess
 Per-project token for the public client dashboard.
@@ -211,7 +217,7 @@ One record per sync job execution.
 
 ## What Is Already Verified
 
-Phase 2.5 was smoke-tested successfully through Postman.
+Phases 2.5, 3, and 4 were verified through Postman and service-level checks.
 
 Verified flows:
 - sign up
@@ -231,6 +237,12 @@ Verified flows:
 - remove member
 - create and list org-scoped projects
 - verify project isolation across organizations
+- create, list, update, and delete org-scoped features
+- connect a project to Notion with encrypted token storage
+- test Notion connection without persisting credentials
+- list accessible Notion databases for a connected project
+- save Notion-to-DevTrack status mappings
+- fetch Notion pages and verify title, status, assignee, and mapped `TicketStatus`
 
 ---
 
@@ -247,16 +259,14 @@ Verified flows:
 
 Build order from this point:
 
-1. Features CRUD
-2. Notion integration
-3. Ticket sync
-4. Ticket management
-5. Progress calculation
-6. Client dashboard
-7. Sync logs
+1. Ticket sync
+2. Ticket management
+3. Progress calculation
+4. Client dashboard
+5. Sync logs
 
 Immediate next target:
-- implement Phase 3 - Features CRUD using the existing projects/auth/org patterns
+- implement Phase 5 - Ticket Sync using the existing projects/features/notion patterns
 
 ---
 
@@ -265,6 +275,9 @@ Immediate next target:
 When continuing work in this repo, assume:
 - auth and org flows are already complete and verified
 - project endpoints must always be organization-scoped
+- feature endpoints must always be scoped through the owning project
 - Better Auth is the source of truth for sessions, org membership, and invitations
+- Notion tokens are provided during project setup, encrypted before storage, and must never be returned in responses
+- Notion integration uses the official SDK client factory in `src/lib/notion.ts`
 - response shape must remain standardized
 - new features should follow the existing vertical slice pattern exactly

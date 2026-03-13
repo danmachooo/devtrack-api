@@ -18,6 +18,17 @@ const envSchema = z.object({
   // db
   DATABASE_URL: z.string().min(1),
 
+  // redis
+  REDIS_URL: z.string().min(1).optional(),
+  REDIS_PORT: z.coerce.number().int().positive().default(6379),
+  REDIS_HOST: z.string().min(1),
+  REDIS_USERNAME: z.string().min(1),
+  REDIS_PASSWORD: z.string().min(1),
+  REDIS_DB_INDEX: z.coerce.number().int().default(0),
+
+  //upstash
+  UPSTASH_REDIS_TCP_URL: z.string().min(1),
+
   //frontend
   FRONTEND_URL: z.url(),
 

@@ -99,13 +99,13 @@
 
 ## Phase 5 - Ticket Sync
 
-- [ ] `src/workers/sync.queue.ts` - BullMQ queue definition
-- [ ] `src/workers/sync.worker.ts` - fetch Notion pages -> upsert `Ticket` rows -> update `lastSyncedAt`
-- [ ] `src/workers/sync.scheduler.ts` - register recurring sync jobs per project sync interval
-- [ ] `worker.ts` - worker entry point, runs as a separate process
-- [ ] Notion rate limit handling - retry with backoff on 429
-- [ ] Write one `SyncLog` row per job execution - success or failure
-- [ ] `POST /api/projects/:id/notion/sync` - manual sync trigger
+- [x] `src/workers/sync.queue.ts` - BullMQ queue definition
+- [x] `src/workers/sync.worker.ts` - fetch Notion pages -> upsert `Ticket` rows -> update `lastSyncedAt`
+- [x] `src/workers/sync.scheduler.ts` - register recurring sync jobs per project sync interval
+- [x] `worker.ts` - worker entry point, runs as a separate process
+- [x] Notion rate limit handling - retry with backoff on 429
+- [x] Write one `SyncLog` row per job execution - success or failure
+- [x] `POST /api/projects/:id/notion/sync` - manual sync trigger
 
 ---
 

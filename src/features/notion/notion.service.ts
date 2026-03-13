@@ -18,6 +18,10 @@ import { ForbiddenError } from '@/core/errors/forbidden.error'
 import { NotFoundError } from '@/core/errors/not-found.error'
 import { UnauthorizedError } from '@/core/errors/unauthorized.error'
 import { mapNotionStatusToTicketStatus } from '@/features/notion/notion.mapper'
+import {
+  findProjectSyncContext,
+  type SyncedTicketRecord
+} from '@/features/notion/notion.repo'
 import type {
   ConnectNotionInput,
   SaveStatusMappingInput,
@@ -30,6 +34,7 @@ import {
 } from '@/features/projects/projects.repo'
 import { decrypt, encrypt } from '@/lib/encryption'
 import { createNotionClient } from '@/lib/notion'
+import { enqueueProjectSync } from '@/workers/sync.queue'
 
 type NotionConnectionResponse = {
   projectId: string
@@ -41,15 +46,6 @@ type NotionConnectionResponse = {
     name: string
   }>
 }
-
-type FetchTicketsResponse = Array<{
-  notionPageId: string
-  title: string
-  notionStatus: string
-  devtrackStatus: TicketStatus
-  assigneeName: string | null
-  notionUpdatedAt: Date
-}>
 
 type NotionRichText = {
   plain_text: string
@@ -309,7 +305,9 @@ const parseStatusMapping = (
   return parsedStatusMapping
 }
 
-const getStoredNotionToken = (project: Project): string => {
+const getStoredNotionToken = (
+  project: Pick<Project, 'notionToken'>
+): string => {
   if (!project.notionToken) {
     throw new AppError(400, 'Notion is not connected for this project.')
   }
@@ -317,12 +315,22 @@ const getStoredNotionToken = (project: Project): string => {
   return decrypt(project.notionToken)
 }
 
-const getStoredDatabaseId = (project: Project): string => {
+const getStoredDatabaseId = (
+  project: Pick<Project, 'notionDatabaseId'>
+): string => {
   if (!project.notionDatabaseId) {
     throw new AppError(400, 'No Notion database is configured for this project.')
   }
 
   return project.notionDatabaseId
+}
+
+const assertProjectHasNotionConfig = (
+  project: Pick<Project, 'notionToken' | 'notionDatabaseId'>
+): void => {
+  if (!project.notionToken || !project.notionDatabaseId) {
+    throw new AppError(400, 'Notion is not connected for this project.')
+  }
 }
 
 const isDatabaseParent = (
@@ -476,11 +484,31 @@ export const saveStatusMapping = async (
   }
 }
 
-export const fetchTickets = async (
+export const enqueueManualSync = async (
   projectId: string,
   organizationId: string | undefined
-): Promise<FetchTicketsResponse> => {
+): Promise<{
+  alreadyQueued: boolean
+  jobId: string
+  projectId: string
+}> => {
   const project = await getProjectOrThrow(projectId, organizationId)
+
+  assertProjectHasNotionConfig(project)
+
+  const queuedJob = await enqueueProjectSync(project.id, 'manual')
+
+  return {
+    projectId: project.id,
+    ...queuedJob
+  }
+}
+
+const fetchTicketsFromProject = async (
+  project: Pick<Project, 'id' | 'notionToken' | 'notionDatabaseId' | 'statusMapping'>
+): Promise<SyncedTicketRecord[]> => {
+  assertProjectHasNotionConfig(project)
+
   const notionToken = getStoredNotionToken(project)
   const databaseId = getStoredDatabaseId(project)
   const database = await retrieveDatabase(notionToken, databaseId)
@@ -506,4 +534,28 @@ export const fetchTickets = async (
       notionUpdatedAt: new Date(page.last_edited_time)
     }
   })
+}
+
+export const fetchTickets = async (
+  projectId: string,
+  organizationId: string | undefined
+): Promise<SyncedTicketRecord[]> => {
+  const project = await getProjectOrThrow(projectId, organizationId)
+  return fetchTicketsFromProject(project)
+}
+
+export const fetchTicketsForSync = async (
+  projectId: string
+): Promise<SyncedTicketRecord[]> => {
+  const project = await findProjectSyncContext(projectId)
+
+  if (!project) {
+    throw new NotFoundError('Project not found.')
+  }
+
+  return fetchTicketsFromProject(project)
+}
+
+export const isNotionRateLimitError = (error: unknown): boolean => {
+  return error instanceof AppError && error.statusCode === 429
 }
