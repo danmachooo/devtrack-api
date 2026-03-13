@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
+    "@notionhq/client": "^5.2.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "better-auth": "^1.5.4",
