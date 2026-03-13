@@ -1,0 +1,51 @@
+import { Router } from 'express'
+
+import { requireRoleMiddleware } from '@/common/middleware/require-role.middleware'
+import { validateBody, validateParams } from '@/core/middleware/validate'
+import {
+  connectNotionController,
+  listNotionDatabasesController,
+  saveStatusMappingController,
+  testNotionConnectionController
+} from '@/features/notion/notion.controller'
+import {
+  connectNotionSchema,
+  projectNotionIdentifierSchema,
+  saveStatusMappingSchema,
+  testNotionConnectionSchema
+} from '@/features/notion/notion.schema'
+
+const notionRouter = Router({ mergeParams: true })
+
+notionRouter.post(
+  '/connect',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateParams(projectNotionIdentifierSchema),
+  validateBody(connectNotionSchema),
+  connectNotionController
+)
+
+notionRouter.post(
+  '/test',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateParams(projectNotionIdentifierSchema),
+  validateBody(testNotionConnectionSchema),
+  testNotionConnectionController
+)
+
+notionRouter.get(
+  '/databases',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateParams(projectNotionIdentifierSchema),
+  listNotionDatabasesController
+)
+
+notionRouter.post(
+  '/mapping',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateParams(projectNotionIdentifierSchema),
+  validateBody(saveStatusMappingSchema),
+  saveStatusMappingController
+)
+
+export { notionRouter }

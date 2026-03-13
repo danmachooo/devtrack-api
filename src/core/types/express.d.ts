@@ -1,10 +1,15 @@
+import { Role } from '@prisma/client'
 import 'express'
 
 declare global {
   namespace Express {
     interface Request {
-      user: {
-        userId
+      user?: {
+        id: string
+        email: string
+        name: string
+        role: Role
+        organizationId?: string
       }
       validatedBody: any
       validatedParams: any

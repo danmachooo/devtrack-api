@@ -9,10 +9,10 @@ const adapter = new PrismaPg({ connectionString })
 
 export const prisma = new PrismaClient({
   adapter,
-  log:
-    appConfig.app.nodeEnv === 'development'
-      ? ['query', 'error', 'warn']
-      : ['error']
+  // log:
+  //   appConfig.app.nodeEnv === 'development'
+  //     ? ['query', 'error', 'warn']
+  //     : ['error']
 })
 
 export type PrismaDbClient = typeof prisma

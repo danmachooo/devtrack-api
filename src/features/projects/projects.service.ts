@@ -1,4 +1,5 @@
-import { NotFoundError } from '@/core/errors/not-found-error'
+import { NotFoundError } from '@/core/errors/not-found.error'
+import { ForbiddenError } from '@/core/errors/forbidden.error'
 import {
   deleteProjectRecord,
   findProjectById,
@@ -15,18 +16,27 @@ import type { Project } from '@prisma/client'
 
 export async function createProject(
   input: CreateProjectInput,
-  userId: string
+  userId: string,
+  organizationId?: string
 ): Promise<Project> {
-  const project = await insertProject(input, userId)
+  if (!organizationId) {
+    throw new ForbiddenError('No active organization selected.')
+  }
+
+  const project = await insertProject(input, userId, organizationId)
   return project
 }
 
 export async function updateProject(
   projectId: string,
-  userId: string,
+  organizationId: string | undefined,
   input: UpdateProjectInput
 ): Promise<Project> {
-  const existing = await findProjectById(projectId, userId)
+  if (!organizationId) {
+    throw new ForbiddenError('No active organization selected.')
+  }
+
+  const existing = await findProjectById(projectId, organizationId)
 
   if (!existing) throw new NotFoundError('Project not found.')
 
@@ -34,20 +44,41 @@ export async function updateProject(
   return project
 }
 
-export async function deleteProject(projectId: string): Promise<void> {
-  await deleteProjectRecord(projectId)
+export async function deleteProject(
+  projectId: string,
+  organizationId: string | undefined
+): Promise<void> {
+  if (!organizationId) {
+    throw new ForbiddenError('No active organization selected.')
+  }
+
+  const existing = await findProjectById(projectId, organizationId)
+
+  if (!existing) throw new NotFoundError('Project not found.')
+
+  await deleteProjectRecord(projectId, organizationId)
 }
 
-export async function listProjects(userId: string): Promise<Project[] | null> {
-  const projects = await findProjects(userId)
+export async function listProjects(
+  organizationId: string | undefined
+): Promise<Project[] | null> {
+  if (!organizationId) {
+    throw new ForbiddenError('No active organization selected.')
+  }
+
+  const projects = await findProjects(organizationId)
   return projects
 }
 
 export async function listProjectById(
   projectId: string,
-  userId: string
+  organizationId: string | undefined
 ): Promise<Project> {
-  const project = await findProjectById(projectId, userId)
+  if (!organizationId) {
+    throw new ForbiddenError('No active organization selected.')
+  }
+
+  const project = await findProjectById(projectId, organizationId)
 
   if (!project) throw new NotFoundError('Project not found.')
   return project
@@ -55,7 +86,7 @@ export async function listProjectById(
 
 export async function listProjectByIdOrThrow(
   projectId: string,
-  userId: string
+  organizationId: string
 ): Promise<Project | null> {
-  return await findProjectByIdOrThrow(projectId, userId)
+  return await findProjectByIdOrThrow(projectId, organizationId)
 }

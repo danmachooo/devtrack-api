@@ -3,12 +3,12 @@ import type {
   CreateProjectInput,
   UpdateProjectInput
 } from '@/features/projects/project.schema'
-import type { Project } from '@prisma/client'
+import type { Prisma, Project, TicketStatus } from '@prisma/client'
 
 export async function findProjects(userId: string): Promise<Project[]> {
   const projects = await prisma.project.findMany({
     where: {
-      createdById: userId
+      organizationId: userId
     },
     orderBy: {
       createdAt: 'desc'
@@ -29,12 +29,12 @@ export async function findProjects(userId: string): Promise<Project[]> {
 
 export async function findProjectById(
   projectId: string,
-  userId: string
+  organizationId: string
 ): Promise<Project | null> {
   const project = await prisma.project.findFirst({
     where: {
       id: projectId,
-      createdById: userId
+      organizationId
     },
     include: {
       features: {
@@ -56,12 +56,12 @@ export async function findProjectById(
 
 export async function findProjectByIdOrThrow(
   projectId: string,
-  userId: string
+  organizationId: string
 ): Promise<Project | null> {
   const project = await prisma.project.findFirstOrThrow({
     where: {
       id: projectId,
-      createdById: userId
+      organizationId
     },
     include: {
       features: {
@@ -83,13 +83,15 @@ export async function findProjectByIdOrThrow(
 
 export async function insertProject(
   input: CreateProjectInput,
-  userId: string
+  userId: string,
+  organizationId: string
 ): Promise<Project> {
   const project = await prisma.project.create({
     data: {
       name: input.name,
       clientName: input.clientName,
       clientEmail: input.clientEmail,
+      organizationId,
       createdById: userId,
       clientAccess: {
         create: {}
@@ -122,10 +124,48 @@ export async function updateProjectRecord(
   return updated
 }
 
-export async function deleteProjectRecord(projectId: string): Promise<void> {
-  await prisma.project.delete({
+export async function updateProjectNotionConnection(
+  projectId: string,
+  notionToken: string,
+  notionDatabaseId: string
+): Promise<Project> {
+  const updatedProject = await prisma.project.update({
     where: {
       id: projectId
+    },
+    data: {
+      notionToken,
+      notionDatabaseId
+    }
+  })
+
+  return updatedProject
+}
+
+export async function updateProjectStatusMapping(
+  projectId: string,
+  statusMapping: Record<string, TicketStatus>
+): Promise<Project> {
+  const updatedProject = await prisma.project.update({
+    where: {
+      id: projectId
+    },
+    data: {
+      statusMapping: statusMapping as Prisma.InputJsonObject
+    }
+  })
+
+  return updatedProject
+}
+
+export async function deleteProjectRecord(
+  projectId: string,
+  organizationId: string
+): Promise<void> {
+  await prisma.project.delete({
+    where: {
+      id: projectId,
+      organizationId
     }
   })
 }

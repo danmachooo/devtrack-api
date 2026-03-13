@@ -1,6 +1,7 @@
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
+import "dotenv/config"
 
 import { errorHandler } from '@/core/middleware/error-handler'
 import { requestLogger } from '@/core/middleware/request-logger'

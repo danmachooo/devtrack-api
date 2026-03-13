@@ -10,11 +10,12 @@ export interface ValidationSchemas {
 export interface ValidatedRequest<
   TBody = unknown,
   TParams = unknown,
-  TQuery = unknown
+  TQuery = unknown,
 > extends Request {
   validatedBody: TBody
   validatedParams: TParams
   validatedQuery: TQuery
+
 }
 
 export function validate(schemas: ValidationSchemas) {
@@ -24,19 +25,18 @@ export function validate(schemas: ValidationSchemas) {
     next: NextFunction
   ): Promise<void> => {
     try {
+      const request = req as ValidatedRequest
+
       if (schemas.body) {
-        ;(req as ValidatedRequest).validatedBody =
-          await schemas.body.parseAsync(req.body)
+          request.validatedBody = await schemas.body.parseAsync(req.body)
       }
 
       if (schemas.params) {
-        ;(req as ValidatedRequest).validatedParams =
-          await schemas.params.parseAsync(req.params)
+          request.validatedParams = await schemas.params.parseAsync(req.params)
       }
 
       if (schemas.query) {
-        ;(req as ValidatedRequest).validatedQuery =
-          await schemas.query.parseAsync(req.query)
+          request.validatedQuery = await schemas.query.parseAsync(req.query)
       }
 
       next()

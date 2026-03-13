@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from 'express'
 import { ZodError, treeifyError } from 'zod'
 
-import { AppError } from '@/core/errors/app-error'
+import { AppError } from '@/core/errors/app.error'
 import { logger } from '@/core/logger/logger'
+import { ValidationError } from '@/core/errors/validation.error'
+import { sendResponse } from '@/core/utils/response'
 
 export const errorHandler = (
   err: Error,
@@ -11,12 +13,7 @@ export const errorHandler = (
   _next: NextFunction
 ): void => {
   if (err instanceof ZodError) {
-    res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: treeifyError(err)
-    })
-    return
+    throw new ValidationError('Validation failed.', treeifyError(err))
   }
 
   if (err instanceof AppError) {
@@ -24,17 +21,11 @@ export const errorHandler = (
       logger.error(err.message, { stack: err.stack })
     }
 
-    res.status(err.statusCode).json({
-      success: false,
-      message: err.message
-    })
+    sendResponse(res, err.statusCode, err.message, err.details)
     return
   }
 
-  logger.error('Unexpected error', { message: err.message, stack: err.stack })
+  logger.error('Unexpected error.', { message: err.message, stack: err.stack })
 
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error'
-  })
+  sendResponse(res, 500, 'Internal Server Error.')
 }

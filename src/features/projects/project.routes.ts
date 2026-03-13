@@ -1,3 +1,4 @@
+import { requireRoleMiddleware } from '@/common/middleware/require-role.middleware'
 import { validateBody, validateParams } from '@/core/middleware/validate'
 import {
   createProjectController,
@@ -15,18 +16,39 @@ import { Router } from 'express'
 
 const router = Router()
 
-router.get('/', getProjectsController)
+router.get(
+  '/',
+  requireRoleMiddleware(
+    'TEAM_LEADER',
+    'BUSINESS_ANALYST',
+    'QUALITY_ASSURANCE',
+    'DEVELOPER'
+  ),
+  getProjectsController
+)
 
 router.get(
   '/:id',
+  requireRoleMiddleware(
+    'TEAM_LEADER',
+    'BUSINESS_ANALYST',
+    'QUALITY_ASSURANCE',
+    'DEVELOPER'
+  ),
   validateParams(projectIdentifierSchema),
   getProjectByIdController
 )
 
-router.post('/', validateBody(createProjectSchema), createProjectController)
+router.post(
+  '/',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateBody(createProjectSchema),
+  createProjectController
+)
 
 router.patch(
   '/:id',
+  requireRoleMiddleware('TEAM_LEADER'),
   validateParams(projectIdentifierSchema),
   validateBody(updateProjectSchema),
   updateProjectController
@@ -34,6 +56,7 @@ router.patch(
 
 router.delete(
   '/:id',
+  requireRoleMiddleware('TEAM_LEADER'),
   validateParams(projectIdentifierSchema),
   deleteProjectController
 )

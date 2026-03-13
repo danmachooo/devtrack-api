@@ -8,6 +8,6 @@ import type {
 export type HttpContext = {
   req: Request
   res: Response
-  next?: NextFunction
+  next: NextFunction
   err?: ErrorRequestHandler
 }
