@@ -2,6 +2,8 @@
 
 This document lists the implemented API endpoints in the current DevTrack backend.
 
+This file has been checked against the current route, controller, schema, service, and repo layers in the codebase.
+
 All successful responses use this wrapper:
 
 ```json
@@ -563,7 +565,7 @@ Response body:
 ### `GET /api/projects`
 
 - Auth: Protected
-- Role: Any authenticated project reader
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`, `QUALITY_ASSURANCE`, `DEVELOPER`
 - Params: None
 - Query: None
 - Request body: None
@@ -608,7 +610,7 @@ Response body:
 ### `GET /api/projects/:id`
 
 - Auth: Protected
-- Role: Any authenticated project reader
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`, `QUALITY_ASSURANCE`, `DEVELOPER`
 - Params:
 
 ```json
@@ -741,6 +743,11 @@ Request body:
 
 All fields are optional, but at least one meaningful change should be provided.
 
+Current implementation note:
+
+- `syncInterval` is optional and must be an integer between `5` and `60` when provided.
+- the current schema allows an empty object, so the API does not currently enforce "at least one field must be provided" for this endpoint.
+
 Response body:
 
 ```json
@@ -836,7 +843,7 @@ Response body:
 ### `GET /api/projects/:projectId/features`
 
 - Auth: Protected
-- Role: Any authenticated project reader
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`, `QUALITY_ASSURANCE`, `DEVELOPER`
 - Params:
 
 ```json
@@ -1209,7 +1216,7 @@ Response body when already queued:
 ### `GET /api/projects/:id/tickets`
 
 - Auth: Protected
-- Role: Any authenticated project reader
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`, `QUALITY_ASSURANCE`, `DEVELOPER`
 - Params:
 
 ```json
@@ -1334,7 +1341,7 @@ Response body:
 ### `GET /api/projects/:id/sync/logs`
 
 - Auth: Protected
-- Role: Any authenticated project reader
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`, `QUALITY_ASSURANCE`, `DEVELOPER`
 - Params:
 
 ```json
@@ -1427,6 +1434,11 @@ Response body:
 }
 ```
 
+Notes:
+
+- the client token param is validated as a UUID
+- `recentActivity` currently returns at most the 5 most recent sync events
+
 `features[].status` can be:
 
 - `NO_WORK_LOGGED`
@@ -1451,6 +1463,27 @@ These routes require UUID-style identifiers:
 - `/api/tickets/:id/feature`
 - `/api/projects/:id/sync/logs`
 - `/api/client/:token`
+
+### Non-UUID string params
+
+These params are validated as non-empty strings, but are not currently restricted to UUID format:
+
+- `/api/org/invitations/:id/accept`
+- `/api/org/invitations/:id/reject`
+- `/api/org/invitations/:id/cancel`
+- `/api/org/members/:id`
+
+### Body and query constraints
+
+- `POST /api/auth/sign-up` and `POST /api/auth/sign-in` require passwords with a minimum length of `8`
+- `POST /api/org` requires `slug` to be `3-100` characters and match lowercase letters, numbers, and hyphens only
+- `PATCH /api/projects/:id` accepts `syncInterval` only in the range `5-60`
+- `POST /api/projects/:projectId/features` accepts optional `order`, which must be an integer `>= 0`
+- `PATCH /api/features/:id` requires at least one of `name` or `order`
+- `POST /api/projects/:id/notion/connect` and `POST /api/projects/:id/notion/test` require a Notion-style identifier for `databaseId`
+- `POST /api/projects/:id/notion/mapping` requires at least one `statusMapping` entry
+- `GET /api/projects/:id/tickets` rejects `featureId` together with `unassigned=true`
+- `GET /api/projects/:id/sync/logs` accepts `limit` from `1` to `50`, defaulting to `10`
 
 ### Enum values
 
@@ -1477,6 +1510,8 @@ Typical error situations across the API:
 - resource not found
 - forbidden role access
 - invalid Notion token or inaccessible Notion resource
+- Notion not connected for the target project
+- conflicting ticket filters such as `featureId` plus `unassigned=true`
 - invalid client dashboard token
 - cross-organization access attempt
 
