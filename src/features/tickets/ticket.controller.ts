@@ -3,11 +3,13 @@ import { asyncHandler } from '@/core/middleware/async-handler'
 import { sendResponse } from '@/core/utils/response'
 import type {
   AssignTicketFeatureInput,
+  BulkAssignTicketFeatureInput,
   TicketFilters,
   TicketIdentifier,
   TicketProjectIdentifier
 } from '@/features/tickets/ticket.schema'
 import {
+  assignTicketsToFeatureBulk,
   assignTicketToFeature,
   getTicketsByProject
 } from '@/features/tickets/tickets.service'
@@ -39,5 +41,23 @@ export const assignTicketFeatureController = asyncHandler(
     )
 
     return sendResponse(http.res, 200, 'Ticket feature has been updated.', result)
+  }
+)
+
+export const assignTicketsFeatureBulkController = asyncHandler(
+  async (http: AuthenticatedHttpContext) => {
+    const body: BulkAssignTicketFeatureInput = http.req.validatedBody
+
+    const result = await assignTicketsToFeatureBulk(
+      http.req.user.organizationId,
+      body
+    )
+
+    return sendResponse(
+      http.res,
+      200,
+      'Ticket features have been updated.',
+      result
+    )
   }
 )

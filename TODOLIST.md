@@ -119,6 +119,8 @@
 - [x] `src/features/tickets/ticket.routes.ts`
 - [x] `GET   /api/projects/:id/tickets` - list tickets, supports filters (unassigned, by feature, by status)
 - [x] `PATCH /api/tickets/:id/feature` - assign or unassign ticket to a feature
+- [x] `GET   /api/projects/:id/tickets` - add search, assignee, sorting, and page/limit pagination query support
+- [x] `PATCH /api/tickets/feature/bulk` - bulk assign or unassign tickets to a feature
 - [x] Smoke test ticket listing, filtering, assignment, unassignment, and cross-project rejection
 
 ---

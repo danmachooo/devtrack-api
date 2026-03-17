@@ -10,7 +10,12 @@ import { apiRouter } from '@/routes'
 const app = express()
 
 app.use(helmet())
-app.use(cors())
+app.use(cors({
+    origin: ['http://localhost:8000'],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization "]
+}))
 app.use(express.json())
 app.use(requestLogger)
 

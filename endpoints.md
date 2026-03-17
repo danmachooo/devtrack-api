@@ -1232,7 +1232,13 @@ Response body when already queued:
   "featureId": "feature-id",
   "status": "IN_DEV",
   "unassigned": true,
-  "showMissing": false
+  "showMissing": false,
+  "page": 1,
+  "limit": 20,
+  "search": "dashboard",
+  "assignee": "jane",
+  "sortBy": "syncedAt",
+  "sortOrder": "desc"
 }
 ```
 
@@ -1243,6 +1249,12 @@ Rules:
 - `featureId` and `unassigned=true` cannot be used together.
 - `showMissing` defaults to `false`.
 - `unassigned` and `showMissing` accept boolean query-string values.
+- `page` defaults to `1`.
+- `limit` defaults to `20` and accepts values from `1` to `100`.
+- `search` performs a case-insensitive match against ticket title and assignee name.
+- `assignee` performs a case-insensitive match against ticket assignee name.
+- `sortBy` accepts `syncedAt`, `createdAt`, `updatedAt`, `title`, or `devtrackStatus`.
+- `sortOrder` accepts `asc` or `desc`.
 
 Response body:
 
@@ -1250,28 +1262,44 @@ Response body:
 {
   "statusCode": 200,
   "message": "Tickets have been found.",
-  "data": [
-    {
-      "id": "ticket-id",
-      "projectId": "project-id",
-      "featureId": "feature-id",
-      "notionPageId": "notion-page-id",
-      "title": "Build client dashboard",
-      "notionStatus": "In Progress",
-      "devtrackStatus": "IN_DEV",
-      "assigneeName": "Jane Doe",
-      "isMissingFromSource": false,
-      "missingFromSourceAt": null,
-      "syncedAt": "2026-03-13T11:00:00.000Z",
-      "createdAt": "2026-03-13T11:00:00.000Z",
-      "updatedAt": "2026-03-13T11:00:00.000Z",
-      "feature": {
-        "id": "feature-id",
-        "name": "Client Portal",
-        "order": 0
+  "data": {
+    "items": [
+      {
+        "id": "ticket-id",
+        "projectId": "project-id",
+        "featureId": "feature-id",
+        "notionPageId": "notion-page-id",
+        "title": "Build client dashboard",
+        "notionStatus": "In Progress",
+        "devtrackStatus": "IN_DEV",
+        "assigneeName": "Jane Doe",
+        "isMissingFromSource": false,
+        "missingFromSourceAt": null,
+        "syncedAt": "2026-03-13T11:00:00.000Z",
+        "createdAt": "2026-03-13T11:00:00.000Z",
+        "updatedAt": "2026-03-13T11:00:00.000Z",
+        "feature": {
+          "id": "feature-id",
+          "name": "Client Portal",
+          "order": 0
+        }
       }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "totalItems": 42,
+      "totalPages": 3,
+      "hasNextPage": true,
+      "hasPreviousPage": false
+    },
+    "search": "dashboard",
+    "assignee": "jane",
+    "sort": {
+      "by": "syncedAt",
+      "order": "desc"
     }
-  ]
+  }
 }
 ```
 
@@ -1330,6 +1358,73 @@ Response body:
       "name": "Client Portal",
       "order": 0
     }
+  }
+}
+```
+
+### `PATCH /api/tickets/feature/bulk`
+
+- Auth: Protected
+- Role: `TEAM_LEADER`, `BUSINESS_ANALYST`
+- Params: None
+- Query: None
+
+Request body to assign:
+
+```json
+{
+  "ticketIds": ["ticket-id-1", "ticket-id-2"],
+  "featureId": "feature-id"
+}
+```
+
+Request body to unassign:
+
+```json
+{
+  "ticketIds": ["ticket-id-1", "ticket-id-2"],
+  "featureId": null
+}
+```
+
+Rules:
+
+- `ticketIds` must contain at least 1 and at most 100 ticket IDs.
+- All tickets in a bulk request must belong to the same project.
+- The target feature must belong to the same project as all submitted tickets.
+
+Response body:
+
+```json
+{
+  "statusCode": 200,
+  "message": "Ticket features have been updated.",
+  "data": {
+    "totalUpdated": 2,
+    "projectId": "project-id",
+    "featureId": "feature-id",
+    "tickets": [
+      {
+        "id": "ticket-id-1",
+        "projectId": "project-id",
+        "featureId": "feature-id",
+        "notionPageId": "notion-page-id-1",
+        "title": "Build client dashboard",
+        "notionStatus": "In Progress",
+        "devtrackStatus": "IN_DEV",
+        "assigneeName": "Jane Doe",
+        "isMissingFromSource": false,
+        "missingFromSourceAt": null,
+        "syncedAt": "2026-03-13T11:00:00.000Z",
+        "createdAt": "2026-03-13T11:00:00.000Z",
+        "updatedAt": "2026-03-13T11:15:00.000Z",
+        "feature": {
+          "id": "feature-id",
+          "name": "Client Portal",
+          "order": 0
+        }
+      }
+    ]
   }
 }
 ```
@@ -1483,6 +1578,7 @@ These params are validated as non-empty strings, but are not currently restricte
 - `POST /api/projects/:id/notion/connect` and `POST /api/projects/:id/notion/test` require a Notion-style identifier for `databaseId`
 - `POST /api/projects/:id/notion/mapping` requires at least one `statusMapping` entry
 - `GET /api/projects/:id/tickets` rejects `featureId` together with `unassigned=true`
+- `GET /api/projects/:id/tickets` accepts `page >= 1`, `limit` from `1` to `100`, optional `search`, optional `assignee`, and sort controls
 - `GET /api/projects/:id/sync/logs` accepts `limit` from `1` to `50`, defaulting to `10`
 
 ### Enum values
