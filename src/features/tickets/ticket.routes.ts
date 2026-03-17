@@ -6,11 +6,13 @@ import {
   validateQuery
 } from '@/core/middleware/validate'
 import {
+  assignTicketsFeatureBulkController,
   assignTicketFeatureController,
   getTicketsController
 } from '@/features/tickets/ticket.controller'
 import {
   assignTicketFeatureSchema,
+  bulkAssignTicketFeatureSchema,
   ticketFiltersSchema,
   ticketIdentifierSchema,
   ticketProjectIdentifierSchema
@@ -30,6 +32,13 @@ projectTicketRouter.get(
   validateParams(ticketProjectIdentifierSchema),
   validateQuery(ticketFiltersSchema),
   getTicketsController
+)
+
+ticketRouter.patch(
+  '/feature/bulk',
+  requireRoleMiddleware('TEAM_LEADER', 'BUSINESS_ANALYST'),
+  validateBody(bulkAssignTicketFeatureSchema),
+  assignTicketsFeatureBulkController
 )
 
 ticketRouter.patch(
