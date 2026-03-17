@@ -41,6 +41,14 @@ export const auth = betterAuth({
       strategy: 'compact'
     }
   },
+  cookies: {
+    sessionToken: {
+      attributes: {
+        secure: true,
+        sameSite: true
+      }
+    }
+  },
   plugins: [
     organization({
       allowUserToCreateOrganization: true,
