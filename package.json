@@ -8,13 +8,14 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "dev:worker": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/worker.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "lint": "eslint",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.json",
-    "format": "prettier --write \"**/*.{ts,js,json}\""
+    "format": "prettier --write \"**/*.{ts,js,json}\"",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
