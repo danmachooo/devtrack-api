@@ -160,6 +160,7 @@
 
 ## Phase 10 - Deploy
 
+- [~] Resolve deployment blockers - explicit Prisma client generation during build and runtime-safe compiled imports
 - [ ] `.env.example` - all required keys documented
 - [ ] Render PostgreSQL database created
 - [ ] Render Redis instance created
