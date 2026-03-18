@@ -270,6 +270,7 @@ Verified flows:
 - calculate feature progress from assigned non-missing tickets using `APPROVED` plus `RELEASED` as complete
 - calculate project progress as the average of feature progress values while ignoring unassigned tickets
 - smoke test progress calculation against live project data with expected `50%` feature and project progress output
+- include additive `progressSummary` data on `GET /api/projects` so list views can render overview progress without per-project ticket fan-out
 - fetch a protected frontend-ready client access link through `GET /api/projects/:id/client-access`
 - verify `TEAM_LEADER` and `BUSINESS_ANALYST` can access the share-link endpoint
 - verify cross-organization access to project client links is rejected
@@ -311,6 +312,7 @@ Immediate next target:
 When continuing work in this repo, assume:
 - auth and org flows are already complete and verified
 - project endpoints must always be organization-scoped
+- `GET /api/projects` includes additive per-project `progressSummary` data for overview screens
 - feature endpoints must always be scoped through the owning project
 - Better Auth is the source of truth for sessions, org membership, and invitations
 - Notion tokens are provided during project setup, encrypted before storage, and must never be returned in responses

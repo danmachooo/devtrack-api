@@ -55,6 +55,20 @@ export type SafeProjectWithOrderedFeatures = Prisma.ProjectGetPayload<{
   select: typeof safeProjectWithOrderedFeaturesSelect
 }>
 
+export type ProjectProgressSummaryFeatureRecord = {
+  id: string
+  name: string
+  order: number
+  projectId: string
+}
+
+export type ProjectProgressSummaryTicketRecord = {
+  projectId: string
+  featureId: string | null
+  isMissingFromSource: boolean
+  devtrackStatus: TicketStatus
+}
+
 export async function findProjects(userId: string): Promise<SafeProject[]> {
   const projects = await prisma.project.findMany({
     where: {
@@ -67,6 +81,49 @@ export async function findProjects(userId: string): Promise<SafeProject[]> {
   })
 
   return projects
+}
+
+export async function findProjectProgressSummaryRecords(projectIds: string[]) {
+  if (projectIds.length === 0) {
+    return {
+      features: [] as ProjectProgressSummaryFeatureRecord[],
+      tickets: [] as ProjectProgressSummaryTicketRecord[]
+    }
+  }
+
+  const [features, tickets] = await prisma.$transaction([
+    prisma.feature.findMany({
+      where: {
+        projectId: {
+          in: projectIds
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        order: true,
+        projectId: true
+      }
+    }),
+    prisma.ticket.findMany({
+      where: {
+        projectId: {
+          in: projectIds
+        }
+      },
+      select: {
+        projectId: true,
+        featureId: true,
+        isMissingFromSource: true,
+        devtrackStatus: true
+      }
+    })
+  ])
+
+  return {
+    features,
+    tickets
+  }
 }
 
 export async function findProjectById(

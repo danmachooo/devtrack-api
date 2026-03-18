@@ -2,10 +2,15 @@ import { NotFoundError } from '@/core/errors/not-found.error'
 import { ForbiddenError } from '@/core/errors/forbidden.error'
 import { appConfig } from '@/config/config'
 import {
+  buildProjectProgressSummary,
+  type ProjectProgressSummary
+} from '@/features/progress/progress.service'
+import {
   deleteProjectRecord,
   findProjectById,
   findProjectClientAccessById,
   findProjectByIdOrThrow,
+  findProjectProgressSummaryRecords,
   findProjects,
   insertProject,
   type SafeProject,
@@ -16,6 +21,10 @@ import type {
   CreateProjectInput,
   UpdateProjectInput
 } from '@/features/projects/project.schema'
+
+type SafeProjectWithProgressSummary = SafeProject & {
+  progressSummary: ProjectProgressSummary
+}
 
 export async function createProject(
   input: CreateProjectInput,
@@ -64,13 +73,41 @@ export async function deleteProject(
 
 export async function listProjects(
   organizationId: string | undefined
-): Promise<SafeProject[] | null> {
+): Promise<SafeProjectWithProgressSummary[] | null> {
   if (!organizationId) {
     throw new ForbiddenError('No active organization selected.')
   }
 
   const projects = await findProjects(organizationId)
-  return projects
+  const projectIds = projects.map((project) => {
+    return project.id
+  })
+  const progressRecords = await findProjectProgressSummaryRecords(projectIds)
+
+  const featuresByProjectId = new Map<string, typeof progressRecords.features>()
+  const ticketsByProjectId = new Map<string, typeof progressRecords.tickets>()
+
+  for (const feature of progressRecords.features) {
+    const projectFeatures = featuresByProjectId.get(feature.projectId) ?? []
+    projectFeatures.push(feature)
+    featuresByProjectId.set(feature.projectId, projectFeatures)
+  }
+
+  for (const ticket of progressRecords.tickets) {
+    const projectTickets = ticketsByProjectId.get(ticket.projectId) ?? []
+    projectTickets.push(ticket)
+    ticketsByProjectId.set(ticket.projectId, projectTickets)
+  }
+
+  return projects.map((project) => {
+    const projectFeatures = featuresByProjectId.get(project.id) ?? []
+    const projectTickets = ticketsByProjectId.get(project.id) ?? []
+
+    return {
+      ...project,
+      progressSummary: buildProjectProgressSummary(projectFeatures, projectTickets)
+    }
+  })
 }
 
 export async function listProjectById(

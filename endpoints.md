@@ -601,11 +601,31 @@ Response body:
       "features": [],
       "_count": {
         "tickets": 0
+      },
+      "progressSummary": {
+        "overallProgress": 0,
+        "assignedNonMissingTickets": 0,
+        "completedAssignedNonMissingTickets": 0,
+        "unassignedTickets": 0,
+        "missingTickets": 0,
+        "featuresWithProgress": 0,
+        "totalFeatures": 0,
+        "featureSummaries": []
       }
     }
   ]
 }
 ```
+
+`progressSummary` notes:
+
+- this field is additive and does not replace existing project detail, feature, or ticket endpoints
+- only assigned, non-missing tickets contribute to progress
+- `APPROVED` and `RELEASED` count as complete
+- `overallProgress` is the average of per-feature progress values across all project features
+- `unassignedTickets` counts non-missing tickets without a feature assignment
+- `missingTickets` counts tickets marked as missing from the source
+- `featureSummaries` includes only features that currently have assigned, non-missing tickets
 
 ### `GET /api/projects/:id`
 

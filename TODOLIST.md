@@ -131,6 +131,7 @@
 - [x] `calculateFeatureProgress(featureId)` - percentage based on `RELEASED` + `APPROVED` tickets
 - [x] `calculateProjectProgress(projectId)` - average progress across all features
 - [x] Progress reflects the latest synced ticket data when calculated after every sync
+- [x] `GET /api/projects` returns additive `progressSummary` data for project overview screens
 
 ---
 
