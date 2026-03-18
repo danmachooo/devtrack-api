@@ -681,10 +681,32 @@ Response body:
     ],
     "_count": {
       "tickets": 12
+    },
+    "progressSummary": {
+      "overallProgress": 50,
+      "assignedNonMissingTickets": 10,
+      "completedAssignedNonMissingTickets": 5,
+      "unassignedTickets": 2,
+      "missingTickets": 1,
+      "featuresWithProgress": 1,
+      "totalFeatures": 3,
+      "featureSummaries": [
+        {
+          "featureId": "feature-id",
+          "name": "Client Portal",
+          "order": 0,
+          "progress": 50,
+          "status": "IN_PROGRESS",
+          "totalTickets": 10,
+          "completedTickets": 5
+        }
+      ]
     }
   }
 }
 ```
+
+`progressSummary` on project detail follows the same rules and shape as `GET /api/projects`.
 
 ### `POST /api/projects`
 

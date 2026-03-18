@@ -26,6 +26,11 @@ type SafeProjectWithProgressSummary = SafeProject & {
   progressSummary: ProjectProgressSummary
 }
 
+type SafeProjectWithOrderedFeaturesAndProgressSummary =
+  SafeProjectWithOrderedFeatures & {
+    progressSummary: ProjectProgressSummary
+  }
+
 export async function createProject(
   input: CreateProjectInput,
   userId: string,
@@ -113,7 +118,7 @@ export async function listProjects(
 export async function listProjectById(
   projectId: string,
   organizationId: string | undefined
-): Promise<SafeProjectWithOrderedFeatures> {
+): Promise<SafeProjectWithOrderedFeaturesAndProgressSummary> {
   if (!organizationId) {
     throw new ForbiddenError('No active organization selected.')
   }
@@ -121,7 +126,17 @@ export async function listProjectById(
   const project = await findProjectById(projectId, organizationId)
 
   if (!project) throw new NotFoundError('Project not found.')
-  return project
+
+  const progressRecords = await findProjectProgressSummaryRecords([project.id])
+  const progressSummary = buildProjectProgressSummary(
+    progressRecords.features,
+    progressRecords.tickets
+  )
+
+  return {
+    ...project,
+    progressSummary
+  }
 }
 
 export async function listProjectByIdOrThrow(

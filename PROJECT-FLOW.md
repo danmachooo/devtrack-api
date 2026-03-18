@@ -161,6 +161,7 @@ Important behavior:
 - Cross-organization project access is rejected.
 - When a project is created, a `ClientAccess` record is generated automatically for future client sharing.
 - `GET /api/projects` includes additive `progressSummary` data so overview screens can show project progress without fetching tickets per project.
+- `GET /api/projects/:id` includes additive `progressSummary` data so project detail screens can render progress cards without recomputing from separate feature and ticket queries.
 
 ### 6. Connect the Project to Notion
 
@@ -331,6 +332,7 @@ Where progress appears:
 
 - Internal project responses
 - Project list responses through `GET /api/projects`
+- Project detail responses through `GET /api/projects/:id`
 - Public client dashboard responses
 
 Operational meaning:

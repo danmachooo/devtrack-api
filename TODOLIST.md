@@ -132,6 +132,7 @@
 - [x] `calculateProjectProgress(projectId)` - average progress across all features
 - [x] Progress reflects the latest synced ticket data when calculated after every sync
 - [x] `GET /api/projects` returns additive `progressSummary` data for project overview screens
+- [x] `GET /api/projects/:id` returns additive `progressSummary` data for project detail screens
 
 ---
 
