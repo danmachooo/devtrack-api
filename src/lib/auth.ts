@@ -33,7 +33,7 @@ export const auth = betterAuth({
       verify: verifyPassword
     }
   },
-  trustedOrigins: [appConfig.frontend.url],
+  trustedOrigins: appConfig.app.trusted_origins,
   session: {
     cookieCache: {
       enabled: true,

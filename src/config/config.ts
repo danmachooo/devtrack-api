@@ -10,6 +10,10 @@ const getNormalizedAuthUrl = (url: string): string => {
   return `${normalizedUrl}/api/auth`
 }
 
+const getNormalizedOrigins = (origins: string): string[] => {
+  return origins.split('|').map(origin => origin.trim()).filter(origin => origin.length > 0)
+}
+ 
 export const appConfig = {
   /**
    * Core application settings.
@@ -23,7 +27,10 @@ export const appConfig = {
 
     /** Current runtime environment (development | production | test) */
     nodeEnv: env.NODE_ENV,
-    logLevel: env.LOG_LEVEL
+    logLevel: env.LOG_LEVEL,
+
+    /** Array of trusted origins */
+    trusted_origins: getNormalizedOrigins(env.TRUSTED_ORIGINS)
   },
   /**
    * Database configuration.

@@ -10,6 +10,7 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'])
     .default('info'),
+  TRUSTED_ORIGINS: z.string().min(1),
 
   // auth
   BETTER_AUTH_URL: z.string().min(1),

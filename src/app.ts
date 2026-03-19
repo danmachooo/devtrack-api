@@ -11,12 +11,11 @@ import { appConfig } from '@/config/config'
 
 const app = express()
 
-const frontendUrl = appConfig.frontend.url
-const backendUrl = appConfig.app.url
+
 
 app.use(helmet())
 app.use(cors({
-    origin: [frontendUrl, backendUrl],
+    origin: appConfig.app.trusted_origins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization "]
