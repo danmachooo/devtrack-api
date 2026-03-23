@@ -1,495 +1,173 @@
-# DevTrack API - Agent Instructions
+# AGENTS.md — DevTrack
 
-Instructions for AI coding agents (Codex, Cursor, Copilot, etc.) working on this repository. Read this fully before writing any code.
-
----
-
-## What This Repo Is
-
-A backend REST API for DevTrack - a client-facing project progress dashboard. The API syncs tickets from Notion, maps them to client-facing features, and exposes progress data to internal teams and clients via magic link access.
-
-For full context on the domain, data model, and architecture read `CONTEXT.md` first.
+> Primary instruction file for Codex. Read this file and all referenced files before writing any code.
 
 ---
 
-## What You Are Allowed To Do
+## 1. Orientation
 
-- Read and understand existing code before writing anything
-- Write new features that follow the existing patterns exactly
-- Refactor existing code when it improves clarity - but only if the task asks for it
-- Make small, localized architectural decisions (naming, helper extraction, minor abstractions) on your own
-- Create a new custom typed error class when the existing error classes do not cover the needed case, as long as it follows the established error pattern
-- Ask before making any decision that affects more than one feature module or the overall structure
+You are working on **DevTrack**, a TypeScript + Express 5 REST API for project delivery tracking with Notion-backed ticket sync and client dashboard access. There is no frontend in this repository.
 
----
+Before doing anything else, read these files in order:
 
-## What You Must Never Do
+1. `agents/CONTEXT.md` — architecture, data models, middleware, patterns
+2. `agents/MEMORY.md` — lessons learned from previous sessions, known gotchas
+3. `agents/STANDARDS.md` — coding conventions and quality rules
+4. `agents/SKILLS.md` — what you are allowed to do and implementation recipes
+5. `agents/PLAN.md` — current session tasks (if it exists)
+6. Any source files directly relevant to the task at hand
 
-- **Change the folder structure** - the layered feature-module pattern is fixed
-- **Install new dependencies without asking** - state what it does, why you need it, and whether there is a simpler alternative using what is already installed
-- **Modify the Prisma schema without asking** - schema changes affect the entire system and require a migration
-- **Change the response shape** - all responses must use the existing response utility and follow `{ statusCode, message, data }`
-- **Rewrite working code unprompted** - if existing code works, leave it alone unless the task explicitly says to change it
-- **Use `.then()` chains** - async/await only
-- **Invent a new export style** - follow the existing file pattern in the module you are touching
-- **Write clever or implicit code** - verbose and explicit always
+Do not write any code until you have read all of the above.
 
 ---
 
-## Before You Write Any Code
+## 2. How to Explore the Codebase
 
-1. Read `CONTEXT.md` to understand the domain, architecture, and what is already built
-2. Find the existing `projects` feature module and read its route, controller, service, repo, and schema files to understand the exact pattern you must follow
-3. Identify which files you need to create or modify
-4. If the task requires a schema change, a new dependency, or a structural decision - stop and ask first
-
----
-
-## Folder Structure
-
-The structure is fixed. Do not add, rename, or reorganize folders.
-
-```text
-src/
-|- app.ts
-|- server.ts
-|- config/
-|- lib/
-|- core/
-|  |- middleware/
-|  |- utils/
-|  |- logger/
-|  `- types/
-|- common/
-|  |- middleware/
-|  `- types/
-|- routes/
-`- features/
-   `- [feature-name]/
-      |- [feature].routes.ts
-      |- [feature].controller.ts
-      |- [feature].service.ts
-      |- [feature].repo.ts
-      `- [feature].schema.ts
-```
-
-Every new feature gets its own folder under `src/features/` using the same file pattern as the existing modules. Validation schemas live in the same feature folder.
-
----
-
-## The Pattern - Follow This Exactly
-
-Every feature follows the same vertical slice:
-
-```text
-feature.routes.ts -> feature.controller.ts -> feature.service.ts -> feature.repo.ts
-```
-
-Use the `projects` and `features` modules as the reference implementation.
-
-### Routes
-
-- `requireAuthMiddleware` is mounted in `src/routes/index.ts` for protected route groups
-- Route files usually apply `requireRoleMiddleware(...)` per endpoint
-- Use `validateBody`, `validateParams`, and `validateQuery` from `src/core/middleware/validate.ts`
-- Controllers are already wrapped with `asyncHandler` inside the controller file, so route files pass the controller directly
-- No business logic here - only middleware chain and controller reference
-
-```typescript
-import { Router } from 'express'
-import { requireRoleMiddleware } from '@/common/middleware/require-role.middleware'
-import { validateBody, validateParams } from '@/core/middleware/validate'
-import {
-  createFeatureController,
-  getFeaturesController
-} from '@/features/features/feature.controller'
-import {
-  createFeatureSchema,
-  featureProjectIdentifierSchema
-} from '@/features/features/feature.schema'
-
-const projectFeatureRouter = Router({ mergeParams: true })
-
-projectFeatureRouter.get(
-  '/',
-  requireRoleMiddleware(
-    'TEAM_LEADER',
-    'BUSINESS_ANALYST',
-    'QUALITY_ASSURANCE',
-    'DEVELOPER'
-  ),
-  validateParams(featureProjectIdentifierSchema),
-  getFeaturesController
-)
-
-projectFeatureRouter.post(
-  '/',
-  requireRoleMiddleware('TEAM_LEADER', 'BUSINESS_ANALYST'),
-  validateParams(featureProjectIdentifierSchema),
-  validateBody(createFeatureSchema),
-  createFeatureController
-)
-
-export { projectFeatureRouter }
-```
-
-### Controller
-
-- Controllers use `asyncHandler(...)`
-- Read validated input from `req.validatedBody`, `req.validatedParams`, and `req.validatedQuery`
-- Use `AuthenticatedHttpContext` for protected routes
-- Call the service
-- Return via `sendResponse`
-- No business logic, no Prisma calls, no try/catch
-
-```typescript
-import { asyncHandler } from '@/core/middleware/async-handler'
-import { sendResponse } from '@/core/utils/response'
-import type { AuthenticatedHttpContext } from '@/common/types/auth.type'
-import type {
-  CreateFeatureInput,
-  FeatureProjectIdentifier
-} from '@/features/features/feature.schema'
-import {
-  createFeature,
-  listFeatures
-} from '@/features/features/features.service'
-
-export const getFeaturesController = asyncHandler(
-  async (http: AuthenticatedHttpContext) => {
-    const project: FeatureProjectIdentifier = http.req.validatedParams
-
-    const result = await listFeatures(
-      project.projectId,
-      http.req.user.organizationId
-    )
-
-    return sendResponse(http.res, 200, 'Features have been found.', result)
-  }
-)
-
-export const createFeatureController = asyncHandler(
-  async (http: AuthenticatedHttpContext) => {
-    const project: FeatureProjectIdentifier = http.req.validatedParams
-    const body: CreateFeatureInput = http.req.validatedBody
-
-    const result = await createFeature(
-      project.projectId,
-      http.req.user.organizationId,
-      body
-    )
-
-    return sendResponse(http.res, 201, 'Feature has been created.', result)
-  }
-)
-```
-
-### Service
-
-- Contains all business logic
-- Calls the repo for data access
-- Enforces organization ownership and resource existence
-- Throws typed error classes for error cases - never returns error objects
-- No HTTP, no Express types
-
-```typescript
-import { ForbiddenError } from '@/core/errors/forbidden.error'
-import { NotFoundError } from '@/core/errors/not-found.error'
-import { findProjectById } from '@/features/projects/projects.repo'
-import {
-  findFeaturesByProject,
-  insertFeature
-} from '@/features/features/features.repo'
-import type { CreateFeatureInput } from '@/features/features/feature.schema'
-
-export async function listFeatures(
-  projectId: string,
-  organizationId: string | undefined
-) {
-  if (!organizationId) {
-    throw new ForbiddenError('No active organization selected.')
-  }
-
-  const project = await findProjectById(projectId, organizationId)
-
-  if (!project) {
-    throw new NotFoundError('Project not found.')
-  }
-
-  return findFeaturesByProject(projectId)
-}
-
-export async function createFeature(
-  projectId: string,
-  organizationId: string | undefined,
-  input: CreateFeatureInput
-) {
-  if (!organizationId) {
-    throw new ForbiddenError('No active organization selected.')
-  }
-
-  const project = await findProjectById(projectId, organizationId)
-
-  if (!project) {
-    throw new NotFoundError('Project not found.')
-  }
-
-  return insertFeature(projectId, input, 0)
-}
-```
-
-### Repo
-
-- Prisma calls only
-- No business logic
-- No error handling - let Prisma errors bubble up to the global error handler
-- Includes can be used when needed to support controller responses
-
-```typescript
-import { prisma } from '@/lib/prisma'
-import type { CreateFeatureInput } from '@/features/features/feature.schema'
-
-export async function findFeaturesByProject(projectId: string) {
-  return prisma.feature.findMany({
-    where: {
-      projectId
-    },
-    orderBy: {
-      order: 'asc'
-    },
-    include: {
-      _count: {
-        select: {
-          tickets: true
-        }
-      }
-    }
-  })
-}
-
-export async function insertFeature(
-  projectId: string,
-  input: CreateFeatureInput,
-  order: number
-) {
-  return prisma.feature.create({
-    data: {
-      name: input.name,
-      order,
-      projectId
-    }
-  })
-}
-```
-
----
-
-## Current Conventions To Match
-
-- Route-level auth is usually mounted in `src/routes/index.ts`, not repeated inside every route file
-- Protected controllers use `AuthenticatedHttpContext`
-- Validated data comes from `req.validatedBody`, `req.validatedParams`, and `req.validatedQuery`
-- The shared response helper is `sendResponse`, not `sendSuccess`
-- Export style is based on existing files:
-  `project.routes.ts` currently uses a default export
-  Most controllers, services, repos, and schema files use named exports
-- Follow the exact style already used in the feature you are extending instead of trying to normalize the whole repo
-
----
-
-## After Writing Every File
-
-After writing or modifying any file, you must run these two commands and resolve all issues before considering the task done:
+When the task touches an area you haven't read yet, inspect it before writing:
 
 ```bash
-npm run lint
-npm run typecheck
+# Full file tree
+find . -type f ! -path '*/node_modules/*' ! -path '*/.git/*' ! -path '*/dist/*' | sort
+
+# Prisma schema
+cat prisma/schema.prisma
+
+# Source structure
+find ./src -type f | sort
+
+# Specific feature
+cat src/features/<feature>/*.ts
 ```
 
-Rules:
-
-- Do not move on if either command produces errors caused by your change
-- Fix every lint error and type error in the file you just wrote - do not suppress them with `// eslint-disable` or `// @ts-ignore`
-- If a type error requires a change in another file, make that change and re-run both commands
-- Only tell the user the task is done after both commands pass clean
+Always verify actual file contents. Never assume structure from memory.
 
 ---
 
-## Updating TODOLIST.md
+## 3. How to Add a New Feature
 
-After completing any task, you must update `TODOLIST.md` - but only under these exact conditions:
+Follow this sequence exactly:
 
-Mark `[x]` only when all of the following are true:
+1. **Read first** — read `agents/CONTEXT.md` and all relevant existing source files before writing anything
+2. **Schema** — if new models or fields are needed, update `prisma/schema.prisma` and generate a migration
+3. **Repo** — add Prisma queries or third-party proxy functions in a `*.repo.ts` file
+4. **Service** — implement business logic, ownership checks, and orchestration in a `*.service.ts` file
+5. **Schema/validation** — define Zod schemas and export input types in a `*.schema.ts` file
+6. **Controller** — write a thin controller in `*.controller.ts` that reads validated input, calls the service, and returns `sendResponse`
+7. **Routes** — register the route in `*.routes.ts` with `requireAuthMiddleware` and `requireRoleMiddleware` applied
+8. **Register** — wire the new router into `src/routes/index.ts`
 
-- The file exists and is fully written - no placeholder comments, no `// TODO`, no stub functions
-- `npm run lint` passes with zero errors
-- `npm run typecheck` passes with zero errors
-- The logic is correct and you are fully confident in the implementation - not just that it compiles
-- Every edge case in the task description is handled - not just the happy path
-- Error cases are handled - missing records, unauthorized access, invalid input
-- The file is wired up end to end - schema, repo, service, controller, and route are all connected
-
-Never mark `[x]` if:
-
-- You are not fully confident the logic is correct
-- The task is partially done - for example the service exists but the route is not wired up yet
-- You wrote the file but skipped error handling or validation
-- You made assumptions about behavior that were not confirmed
-
-Use `[~]` for in-progress tasks when a file is written but not yet tested or not fully complete.
-
-When in doubt, leave it `[ ]` and tell the user what still needs to be verified before it can be marked done.
-
-At the end of every session, report which items you marked and why. If you are unsure about any item, list it explicitly and ask the user to verify before marking it.
+Do not skip steps. Do not merge responsibilities across layers.
 
 ---
 
-## Validation
+## 4. Coding Rules
 
-Every route that accepts body, params, or query input must validate it with Zod using the shared middleware helpers.
+These are non-negotiable. Full details are in `agents/STANDARDS.md` — read that file. The rules below are a hard summary.
 
-```typescript
-import { z } from 'zod'
+### Style
+- TypeScript strict mode. No `any`. No implicit returns.
+- Named exports only. No default exports.
+- `async/await` only. No `.then()` chains.
+- Verbose and explicit over clever. Prioritize readability.
+- No magic strings — use constants or enums.
 
-export const ticketProjectIdentifierSchema = z.strictObject({
-  id: z.string().uuid()
-})
+### File naming
+- Files: `kebab-case.ts`
+- Types/interfaces: `PascalCase`
+- Variables/functions: `camelCase`
+- Constants: `SCREAMING_SNAKE_CASE`
 
-export const createFeatureSchema = z.strictObject({
-  name: z.string().min(1, 'Feature name is required').max(100)
-})
+### Prisma
+- Always scope queries by `organizationId`.
+- Use parameterized queries only — never string-interpolate into raw SQL.
+- Handle `PrismaClientKnownRequestError` explicitly — never let ORM errors leak to the client.
+- Normal project reads must use safe selects that omit `notionToken`. Use `findProjectByIdWithSecrets` only when Notion credentials are actually needed.
 
-export type CreateFeatureInput = z.infer<typeof createFeatureSchema>
-```
+### Errors
+- Throw typed errors from services: `AppError`, `ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`.
+- Never embed ad hoc response logic in controllers for error cases.
+- Never expose stack traces or internal messages to the client.
 
-Use:
+### Environment and secrets
+- Access env vars only through `src/config/config.ts`. Never read `process.env` directly in feature code.
+- Never log secret values. Mask them in any debug output.
+- Notion tokens must be encrypted before storage and decrypted only inside service methods that need live Notion access.
 
-- `validateBody(schema)` for request bodies
-- `validateParams(schema)` for route params
-- `validateQuery(schema)` for query strings
-
-Never access raw request input in a controller when a validated version should be used.
-
----
-
-## Error Handling
-
-Never use try/catch inside controllers or services. Throw typed error classes. The global error handler in `src/core/middleware/error-handler.ts` catches everything.
-
-If the right typed error class does not exist yet, you may create a new custom error class in the existing errors area and follow the same pattern as the current error classes. Do not force an unrelated existing error class just to avoid creating one.
-
-```typescript
-import { ForbiddenError } from '@/core/errors/forbidden.error'
-import { NotFoundError } from '@/core/errors/not-found.error'
-
-if (!organizationId) {
-  throw new ForbiddenError('No active organization selected.')
-}
-
-if (!project) {
-  throw new NotFoundError('Project not found.')
-}
-```
+### Responses
+- Always use `sendResponse` with the standard `{ statusCode, message, data }` envelope.
+- Never construct raw `res.json(...)` responses in controllers.
 
 ---
 
-## Role Permissions
+## 5. Authorization Rules
 
-Use these role rules consistently across all routes. Do not invent new permission patterns.
+Every internal route must satisfy all four checks in this order:
 
-| Action | TEAM_LEADER | BUSINESS_ANALYST | QUALITY_ASSURANCE | DEVELOPER |
-|---|---|---|---|---|
-| Create / delete project | Yes | No | No | No |
-| Connect / configure Notion | Yes | No | No | No |
-| Create / delete features | Yes | Yes | No | No |
-| Assign tickets to features | Yes | Yes | No | No |
-| Update ticket status | Yes | Yes | Yes | No |
-| Read projects, features, tickets | Yes | Yes | Yes | Yes |
-| Trigger manual sync | Yes | Yes | No | No |
+1. Is the user authenticated? (`requireAuthMiddleware`)
+2. Is there an active organization? (checked in service via `req.user.organizationId`)
+3. Does the target resource belong to that organization? (checked in service)
+4. Does the user role allow this action? (`requireRoleMiddleware`)
 
-Client access is token-based via `ClientAccess.token`, not session-based and not role-based. Client routes use a separate `require-client-auth` middleware when that feature is introduced.
+Never skip or reorder these. Never leave a route unprotected.
 
----
+### Role reference
 
-## Naming Conventions
-
-| Thing | Convention | Example |
-|---|---|---|
-| Files | kebab-case | `feature.service.ts` |
-| Folders | kebab-case | `src/features/sync-logs/` |
-| Functions | camelCase | `createFeature` |
-| Types / Interfaces | PascalCase | `CreateFeatureInput` |
-| Zod schemas | camelCase + Schema suffix | `createFeatureSchema` |
-| Router exports | match the existing module | `featureRouter`, `projectFeatureRouter` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_SYNC_INTERVAL` |
-| Prisma enum values | SCREAMING_SNAKE_CASE | `TEAM_LEADER`, `IN_DEV` |
+| Action | Allowed roles |
+|---|---|
+| Project read | All authenticated |
+| Project create / update / delete | `TEAM_LEADER` |
+| Feature read | All authenticated |
+| Feature create / update / delete | `TEAM_LEADER`, `BUSINESS_ANALYST` |
+| Ticket listing | All authenticated |
+| Ticket feature assignment | `TEAM_LEADER`, `BUSINESS_ANALYST` |
+| Client access link | `TEAM_LEADER`, `BUSINESS_ANALYST` |
+| Notion connect / mapping | `TEAM_LEADER` |
+| Manual sync enqueue | `TEAM_LEADER`, `BUSINESS_ANALYST` |
+| Sync log listing | All authenticated |
+| Org management | `TEAM_LEADER` |
 
 ---
 
-## Security
+## 6. Background Worker Rules
 
-Never ignore security vulnerabilities. If you spot one, flag it immediately before continuing with the task.
+When working on anything sync or queue related:
 
-Ownership checks:
-
-- Always verify a resource belongs to the current user's organization before reading or modifying it
-- Never trust IDs from `req.params`, `req.query`, or `req.body` without checking ownership in the service layer
-- A user from Org A must never be able to access or modify resources belonging to Org B
-
-Sensitive field exposure:
-
-- Never include `notionToken` in any API response - it is encrypted at rest and must never leave the server
-- Never expose raw `Session`, `Account`, or `Verification` records in responses
-- The client dashboard endpoint `GET /api/client/:token` must never return internal fields such as ticket IDs, assignee names, Notion IDs, sync logs, or user info
-- Scrub sensitive fields explicitly before returning any response - do not rely on accidentally omitting them
-
-Input handling:
-
-- Never trust client input - always validate through Zod before using any value
-- Never construct raw SQL or dynamic Prisma queries from unvalidated input
-- Never use `any` to bypass type safety on request data
-
-Tokens and secrets:
-
-- Never log session tokens, Notion tokens, magic link tokens, or passwords
-- Never return a raw error message that reveals internal implementation details such as stack traces, Prisma errors, or file paths
-- Magic link tokens must be validated via constant-time comparison - never use `===` for token comparison
-
-Vulnerabilities:
-
-- If you find a security issue in existing code while working on a task, stop and flag it before proceeding
-- Never suppress a security warning with a comment - fix it or ask
-- Never use `// @ts-ignore` or `// eslint-disable` to work around a type or lint error that is hiding a real security issue
+- Manual enqueue must deduplicate by job ID — never double-queue a project.
+- Always acquire a Redis lock per project before syncing to prevent concurrent duplicate runs.
+- Sync must never hard-delete tickets. Mark absent tickets as missing (`isMissingFromSource: true`, `missingFromSourceAt`).
+- If a previously missing ticket reappears, clear its missing flags.
+- Rate limit errors (Notion 429) must map to `RATE_LIMITED` sync log status.
+- Scheduler upserts run every minute — new sync-connected projects are picked up automatically.
 
 ---
 
-## Staying Up To Date
+## 7. What Not To Do
 
-Before using any method from Better Auth, BullMQ, Prisma, or any other dependency:
-
-1. Check the installed version in `package.json`
-2. Use only APIs and methods that exist in that exact version
-3. Never use methods marked as deprecated in that version's changelog
-4. If the docs you are referencing are for a different version, stop and find the correct version's docs
-5. If you are unsure whether a method is current, state that uncertainty and ask before using it
-
-This applies especially to Better Auth's organizations plugin - its API changes between versions. Always verify against the installed version, not the latest docs.
+- Do not bypass or remove `requireAuthMiddleware` or `requireRoleMiddleware` on any route.
+- Do not return data outside the active `organizationId` scope.
+- Do not put business logic in controllers.
+- Do not put Prisma queries in services — use repos.
+- Do not use `console.log` — use the Winston logger.
+- Do not introduce a new dependency without first checking if `package.json` already covers the need.
+- Do not use default exports.
+- Do not write `.then()` chains.
+- Do not read `process.env` directly in feature code.
+- Do not leak `notionToken` in normal project reads.
+- Do not hard-delete tickets during sync.
+- Do not leave TODOs without explaining why in your response.
 
 ---
 
-## When To Ask
+## 8. PLAN.md
 
-Ask before proceeding if the task requires any of the following:
+If `agents/PLAN.md` exists, read it before starting any work. It contains the current session's tasks and goals. Work through it top to bottom unless instructed otherwise. If no `agents/PLAN.md` exists, ask what to work on before writing any code.
 
-- Adding a new npm package
-- Changing or adding to the Prisma schema
-- Adding a new folder outside the established structure
-- Changing how authentication or session resolution works
-- Changing the response shape or the response utility
-- Introducing a new pattern that does not exist anywhere in the codebase
-- Modifying any file in `src/core/` or `src/common/`
+---
 
-Exception:
-- Creating a new custom error class in the existing error class area is allowed when an appropriate typed error does not already exist
+## 9. End of Session
 
-For everything else - naming, helper extraction, minor abstractions within a feature module - use your best judgment and follow the existing code as the reference.
+Before ending any session:
+
+1. Cross off completed tasks in `agents/PLAN.md` by replacing `[ ]` with `[x]`
+2. Generalize the key takeaways from this session and append them to `agents/MEMORY.md` using the format defined in that file
+3. Only include lessons that would have changed your approach if you had known them earlier
