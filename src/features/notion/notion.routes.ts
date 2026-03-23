@@ -5,12 +5,14 @@ import { validateBody, validateParams } from '@/core/middleware/validate'
 import {
   connectNotionController,
   enqueueManualSyncController,
+  getDefaultStatusMappingController,
   listNotionDatabasesController,
   saveStatusMappingController,
   testNotionConnectionController
 } from '@/features/notion/notion.controller'
 import {
   connectNotionSchema,
+  defaultStatusMappingParamsSchema,
   projectNotionIdentifierSchema,
   saveStatusMappingSchema,
   testNotionConnectionSchema
@@ -54,6 +56,13 @@ notionRouter.post(
   validateParams(projectNotionIdentifierSchema),
   validateBody(saveStatusMappingSchema),
   saveStatusMappingController
+)
+
+notionRouter.get(
+  '/status-mapping/default',
+  requireRoleMiddleware('TEAM_LEADER'),
+  validateParams(defaultStatusMappingParamsSchema),
+  getDefaultStatusMappingController
 )
 
 export { notionRouter }

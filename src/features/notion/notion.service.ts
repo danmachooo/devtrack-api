@@ -17,8 +17,12 @@ import { AppError } from '@/core/errors/app.error'
 import { ForbiddenError } from '@/core/errors/forbidden.error'
 import { NotFoundError } from '@/core/errors/not-found.error'
 import { UnauthorizedError } from '@/core/errors/unauthorized.error'
-import { mapNotionStatusToTicketStatus } from '@/features/notion/notion.mapper'
 import {
+  buildDefaultStatusMapping,
+  mapNotionPageToSyncedTicketRecord
+} from '@/features/notion/notion.mapper'
+import {
+  getNotionDatabaseSchema,
   findProjectSyncContext,
   type SyncedTicketRecord
 } from '@/features/notion/notion.repo'
@@ -67,8 +71,6 @@ type NotionDataSourceSummary = {
   name: string
   parent: DataSourceObjectResponse['parent']
 }
-
-type NotionPage = PageObjectResponse
 
 type NotionDataSource = Pick<DataSourceObjectResponse, 'id' | 'title' | 'properties'>
 
@@ -220,10 +222,10 @@ const listSearchDataSources = async (
 const queryDataSourcePages = async (
   token: string,
   dataSourceId: string
-): Promise<NotionPage[]> => {
+): Promise<PageObjectResponse[]> => {
   try {
     const notion = createNotionClient(token)
-    const pages: NotionPage[] = []
+    const pages: PageObjectResponse[] = []
 
     for await (const result of iteratePaginatedAPI(notion.dataSources.query, {
       data_source_id: dataSourceId,
@@ -356,55 +358,6 @@ const hasDatabaseParent = (
   return isDatabaseParent(dataSource.parent)
 }
 
-const getTitleFromPage = (page: NotionPage): string => {
-  const titleProperty = Object.values(page.properties).find(
-    (property) => property.type === 'title'
-  )
-
-  if (!titleProperty?.title) {
-    return 'Untitled'
-  }
-
-  const title = getPlainText(titleProperty.title)
-  return title || 'Untitled'
-}
-
-const getStatusFromPage = (page: NotionPage): string => {
-  const statusProperty = Object.values(page.properties).find(
-    (property) => property.type === 'status' || property.type === 'select'
-  )
-
-  if (!statusProperty) {
-    return 'TODO'
-  }
-
-  if (statusProperty.type === 'status' && statusProperty.status?.name) {
-    return statusProperty.status.name
-  }
-
-  if (statusProperty.type === 'select' && statusProperty.select?.name) {
-    return statusProperty.select.name
-  }
-
-  return 'TODO'
-}
-
-const getAssigneeFromPage = (page: NotionPage): string | null => {
-  const peopleProperty = Object.values(page.properties).find(
-    (property) => property.type === 'people'
-  )
-
-  if (!peopleProperty?.people || peopleProperty.people.length === 0) {
-    return null
-  }
-
-  const names = peopleProperty.people
-    .map((person) => ('name' in person ? person.name : null))
-    .filter((name): name is string => Boolean(name))
-
-  return names.length > 0 ? names.join(', ') : null
-}
-
 export const connectNotion = async (
   projectId: string,
   organizationId: string | undefined,
@@ -484,6 +437,38 @@ export const saveStatusMapping = async (
   }
 }
 
+export const getDefaultStatusMappingService = async (
+  projectId: string,
+  organizationId: string | undefined
+): Promise<{
+  projectId: string
+  statusMapping: Record<string, TicketStatus>
+}> => {
+  const project = await getProjectOrThrow(projectId, organizationId)
+
+  if (!project.notionToken || !project.notionDatabaseId) {
+    throw new AppError(400, 'Connect Notion before generating a status mapping.')
+  }
+
+  const notionToken = decrypt(project.notionToken)
+
+  try {
+    const notionStatuses = await getNotionDatabaseSchema(
+      project.notionDatabaseId,
+      notionToken
+    )
+
+    return {
+      projectId: project.id,
+      statusMapping: buildDefaultStatusMapping(notionStatuses)
+    }
+  } catch (error) {
+    mapNotionError(error)
+  }
+
+  throw new AppError(502, 'Notion request failed.')
+}
+
 export const enqueueManualSync = async (
   projectId: string,
   organizationId: string | undefined
@@ -519,21 +504,7 @@ const fetchTicketsFromProject = async (
   const pages = await queryDataSourcePages(notionToken, dataSourceId)
   const statusMapping = parseStatusMapping(project.statusMapping)
 
-  return pages.map((page) => {
-    const notionStatus = getStatusFromPage(page)
-
-    return {
-      notionPageId: page.id,
-      title: getTitleFromPage(page),
-      notionStatus,
-      devtrackStatus: mapNotionStatusToTicketStatus(
-        notionStatus,
-        statusMapping
-      ),
-      assigneeName: getAssigneeFromPage(page),
-      notionUpdatedAt: new Date(page.last_edited_time)
-    }
-  })
+  return pages.map((page) => mapNotionPageToSyncedTicketRecord(page, statusMapping))
 }
 
 export const fetchTickets = async (

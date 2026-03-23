@@ -4,6 +4,20 @@ import type {
   UpdateFeatureInput
 } from '@/features/features/feature.schema'
 
+const FEATURE_NAME_WORD_SEPARATOR = /\s+/
+
+export const normalizeFeatureName = (name: string): string => {
+  return name
+    .trim()
+    .split(FEATURE_NAME_WORD_SEPARATOR)
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const lowerCasedPart = part.toLowerCase()
+      return lowerCasedPart.charAt(0).toUpperCase() + lowerCasedPart.slice(1)
+    })
+    .join(' ')
+}
+
 export async function findFeaturesByProject(projectId: string) {
   const features = await prisma.feature.findMany({
     where: {
@@ -189,6 +203,45 @@ export async function deleteFeatureRecord(
         order: {
           decrement: 1
         }
+      }
+    })
+  })
+}
+
+export async function upsertFeatureByName(projectId: string, name: string) {
+  const normalizedName = normalizeFeatureName(name)
+
+  return prisma.$transaction(async (tx) => {
+    const existingFeature = await tx.feature.findFirst({
+      where: {
+        projectId,
+        name: {
+          equals: normalizedName,
+          mode: 'insensitive'
+        }
+      }
+    })
+
+    if (existingFeature) {
+      return existingFeature
+    }
+
+    const lastFeature = await tx.feature.findFirst({
+      where: {
+        projectId
+      },
+      orderBy: {
+        order: 'desc'
+      }
+    })
+
+    const nextOrder = lastFeature ? lastFeature.order + 1 : 0
+
+    return tx.feature.create({
+      data: {
+        projectId,
+        name: normalizedName,
+        order: nextOrder
       }
     })
   })

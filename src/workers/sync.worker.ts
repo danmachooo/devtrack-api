@@ -4,14 +4,20 @@ import { Worker, type BackoffStrategy } from 'bullmq'
 import { SyncStatus } from '@prisma/client'
 
 import { appConfig } from '@/config/config'
+import { AppError } from '@/core/errors/app.error'
 import { logger } from '@/core/logger/logger'
+import {
+  normalizeFeatureName,
+  upsertFeatureByName
+} from '@/features/features/features.repo'
 import {
   fetchTicketsForSync,
   isNotionRateLimitError
 } from '@/features/notion/notion.service'
 import {
   insertSyncLog,
-  persistTicketSync
+  persistTicketSync,
+  type SyncedTicketRecord
 } from '@/features/notion/notion.repo'
 import { calculateProjectProgress } from '@/features/progress/progress.service'
 import { createRedisConnection } from '@/lib/redis'
@@ -79,9 +85,103 @@ const rateLimitBackoffStrategy: BackoffStrategy = (
   return Math.min(nextDelay, RATE_LIMIT_BACKOFF_MAX_DELAY_MS)
 }
 
-const processSyncJob = async (data: SyncJobData) => {
+interface SyncProjectTicketsDependencies {
+  acquireProjectSyncLock: (
+    projectId: string,
+    token: string
+  ) => Promise<boolean>
+  releaseProjectSyncLock: (
+    projectId: string,
+    token: string
+  ) => Promise<void>
+  fetchTicketsForSync: (projectId: string) => Promise<SyncedTicketRecord[]>
+  upsertFeatureByName: (
+    projectId: string,
+    name: string
+  ) => Promise<{ id: string; name: string }>
+  persistTicketSync: (
+    projectId: string,
+    tickets: SyncedTicketRecord[],
+    syncedAt: Date
+  ) => Promise<{
+    ticketsAdded: number
+    ticketsUpdated: number
+    ticketsMarkedMissing: number
+  }>
+  calculateProjectProgress: (projectId: string) => Promise<number>
+  insertSyncLog: (
+    projectId: string,
+    status: SyncStatus,
+    ticketsAdded: number,
+    ticketsUpdated: number,
+    errorMessage?: string
+  ) => Promise<unknown>
+}
+
+const defaultSyncProjectTicketsDependencies: SyncProjectTicketsDependencies = {
+  acquireProjectSyncLock,
+  releaseProjectSyncLock,
+  fetchTicketsForSync,
+  upsertFeatureByName,
+  persistTicketSync,
+  calculateProjectProgress,
+  insertSyncLog
+}
+
+const resolveFeatureAssignments = async (
+  projectId: string,
+  tickets: SyncedTicketRecord[],
+  dependencies: Pick<SyncProjectTicketsDependencies, 'upsertFeatureByName'>
+): Promise<SyncedTicketRecord[]> => {
+  const featureLookup = new Map<string, string>()
+
+  for (const ticket of tickets) {
+    if (ticket.moduleName === null) {
+      continue
+    }
+
+    const normalizedModuleName = normalizeFeatureName(ticket.moduleName)
+
+    if (featureLookup.has(normalizedModuleName)) {
+      continue
+    }
+
+    const feature = await dependencies.upsertFeatureByName(
+      projectId,
+      normalizedModuleName
+    )
+
+    featureLookup.set(normalizedModuleName, feature.id)
+  }
+
+  return tickets.map((ticket) => {
+    if (ticket.moduleName === null) {
+      return ticket
+    }
+
+    const normalizedModuleName = normalizeFeatureName(ticket.moduleName)
+    const featureId = featureLookup.get(normalizedModuleName)
+
+    if (!featureId) {
+      throw new AppError(500, 'Failed to resolve synced ticket feature.')
+    }
+
+    return {
+      ...ticket,
+      featureId
+    }
+  })
+}
+
+export const syncProjectTickets = async (
+  data: SyncJobData,
+  dependencies: SyncProjectTicketsDependencies = defaultSyncProjectTicketsDependencies
+) => {
   const lockToken = randomUUID()
-  const hasLock = await acquireProjectSyncLock(data.projectId, lockToken)
+  const hasLock = await dependencies.acquireProjectSyncLock(
+    data.projectId,
+    lockToken
+  )
 
   if (!hasLock) {
     logger.info('Skipping duplicate project sync job.', {
@@ -96,12 +196,23 @@ const processSyncJob = async (data: SyncJobData) => {
   }
 
   try {
-    const tickets = await fetchTicketsForSync(data.projectId)
+    const tickets = await dependencies.fetchTicketsForSync(data.projectId)
+    const ticketsWithFeatureAssignments = await resolveFeatureAssignments(
+      data.projectId,
+      tickets,
+      dependencies
+    )
     const syncedAt = new Date()
-    const persisted = await persistTicketSync(data.projectId, tickets, syncedAt)
-    const projectProgress = await calculateProjectProgress(data.projectId)
+    const persisted = await dependencies.persistTicketSync(
+      data.projectId,
+      ticketsWithFeatureAssignments,
+      syncedAt
+    )
+    const projectProgress = await dependencies.calculateProjectProgress(
+      data.projectId
+    )
 
-    await insertSyncLog(
+    await dependencies.insertSyncLog(
       data.projectId,
       SyncStatus.SUCCESS,
       persisted.ticketsAdded,
@@ -119,7 +230,7 @@ const processSyncJob = async (data: SyncJobData) => {
       error instanceof Error ? error.message : 'Ticket sync failed.'
 
     if (isNotionRateLimitError(error)) {
-      await insertSyncLog(
+      await dependencies.insertSyncLog(
         data.projectId,
         SyncStatus.RATE_LIMITED,
         0,
@@ -130,7 +241,7 @@ const processSyncJob = async (data: SyncJobData) => {
       throw error
     }
 
-    await insertSyncLog(
+    await dependencies.insertSyncLog(
       data.projectId,
       SyncStatus.FAILED,
       0,
@@ -140,7 +251,7 @@ const processSyncJob = async (data: SyncJobData) => {
 
     throw error
   } finally {
-    await releaseProjectSyncLock(data.projectId, lockToken)
+    await dependencies.releaseProjectSyncLock(data.projectId, lockToken)
   }
 }
 
@@ -148,7 +259,7 @@ export const createSyncWorker = (): Worker<SyncJobData, unknown, string> => {
   const worker = new Worker<SyncJobData, unknown, string>(
     SYNC_QUEUE_NAME,
     async (job) => {
-      return processSyncJob(job.data)
+      return syncProjectTickets(job.data)
     },
     {
       concurrency: 2,

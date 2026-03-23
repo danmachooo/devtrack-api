@@ -62,3 +62,11 @@ Most internal service methods start by checking `req.user.organizationId`. If th
 ---
 
 <!-- Append new entries below this line after each session -->
+
+### 2026-03-23 - Notion status options live on the primary data source
+When auto-building a default status mapping, the usable status/select options in this codebase's Notion API version came from the database's primary data source properties rather than directly from `DatabaseObjectResponse.properties`.
+If a future Notion schema task needs option metadata, inspect the primary data source shape first before assuming the database payload exposes everything you need.
+
+### 2026-03-23 - Vitest route tests need seeded env before config imports
+Route-level Vitest tests that import modules transitively touching `src/config/env.ts` will fail fast unless the required env vars are populated before those imports happen.
+For isolated HTTP tests in this repo, seed the minimal test env inside `vi.hoisted(...)` before importing the app, router, or any module that depends on config.

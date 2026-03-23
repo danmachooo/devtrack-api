@@ -17,6 +17,14 @@
     "format": "prettier --write \"**/*.{ts,js,json}\"",
     "postinstall": "prisma generate"
   },
+  "vitest": {
+    "test": {
+      "environment": "node",
+      "alias": {
+        "@": "./src"
+      }
+    }
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -43,13 +51,16 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.5",
+    "@types/supertest": "^6.0.3",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.18.0",
     "eslint": "^10.0.3",
     "prettier": "^3.8.1",
     "prisma": "^7.4.2",
+    "supertest": "^7.1.4",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^3.2.4"
   }
 }

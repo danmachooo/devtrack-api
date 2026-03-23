@@ -15,6 +15,8 @@ export const projectNotionIdentifierSchema = z.strictObject({
   id: z.uuid().min(1)
 })
 
+export const defaultStatusMappingParamsSchema = projectNotionIdentifierSchema
+
 export const connectNotionSchema = z.strictObject({
   notionToken: z.string().min(1, 'Notion token is required.'),
   databaseId: notionIdentifierSchema
@@ -33,6 +35,9 @@ export const saveStatusMappingSchema = z
 
 export type ProjectNotionIdentifier = z.infer<
   typeof projectNotionIdentifierSchema
+>
+export type DefaultStatusMappingParams = z.infer<
+  typeof defaultStatusMappingParamsSchema
 >
 export type ConnectNotionInput = z.infer<typeof connectNotionSchema>
 export type TestNotionConnectionInput = z.infer<

@@ -3,6 +3,7 @@ import { sendResponse } from '@/core/utils/response'
 import type { AuthenticatedHttpContext } from '@/common/types/auth.type'
 import type {
   ConnectNotionInput,
+  DefaultStatusMappingParams,
   ProjectNotionIdentifier,
   SaveStatusMappingInput,
   TestNotionConnectionInput
@@ -10,6 +11,7 @@ import type {
 import {
   connectNotion,
   enqueueManualSync,
+  getDefaultStatusMappingService,
   listDatabases,
   saveStatusMapping,
   testConnection
@@ -72,6 +74,23 @@ export const saveStatusMappingController = asyncHandler(
       http.res,
       200,
       'Notion status mapping has been saved.',
+      result
+    )
+  }
+)
+
+export const getDefaultStatusMappingController = asyncHandler(
+  async (http: AuthenticatedHttpContext) => {
+    const project: DefaultStatusMappingParams = http.req.validatedParams
+    const result = await getDefaultStatusMappingService(
+      project.id,
+      http.req.user.organizationId
+    )
+
+    return sendResponse(
+      http.res,
+      200,
+      'Default Notion status mapping generated successfully.',
       result
     )
   }

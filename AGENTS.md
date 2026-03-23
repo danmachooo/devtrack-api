@@ -164,7 +164,88 @@ If `agents/PLAN.md` exists, read it before starting any work. It contains the cu
 
 ---
 
-## 9. End of Session
+## 9. Phase Completion Protocol
+
+When a plan is divided into phases, do not move from one phase to the next automatically. After completing every phase, stop and report the following before proceeding:
+
+**1. What was done**
+List every file that was created or modified and briefly describe what changed in each one.
+
+**2. What was verified**
+List every check that was run — type errors, linting, logic review against `agents/STANDARDS.md`, and any manual verification steps from the plan.
+
+**3. What was tested**
+Run the following after every phase and report the actual output — not what you expect, but what actually happened:
+
+```bash
+# Type check — must pass with zero errors before anything else
+npx tsc --noEmit
+
+# Run tests for the affected feature
+npx vitest run src/features/<feature>/<feature>.test.ts
+```
+
+Every new or modified endpoint must have a corresponding Vitest + Supertest test. For worker or sync changes, write a test that mocks the Notion client and Prisma calls and asserts the correct sync behavior.
+
+Follow this loop until all tests pass:
+
+```
+run tsc --noEmit
+  → if errors: fix → repeat
+run vitest
+  → if any test fails: fix → re-run vitest → repeat
+  → if all pass: report and wait for confirmation
+```
+
+Do not break out of this loop by skipping a failing test, marking it as skipped, or commenting it out. Every test must pass. Only then report phase completion and ask for confirmation.
+
+See `agents/SKILLS.md` for the full testing recipe.
+
+**4. Confidence level**
+State your confidence that the phase is complete and correct. If anything is uncertain, name it explicitly. Do not paper over doubts.
+
+**4. What comes next**
+State which phase is next and what it will touch.
+
+Then wait for explicit confirmation before continuing.
+
+Example format:
+
+> ✅ Phase 1 complete.
+>
+> **Done:**
+> - `notion.repo.ts` — added `getNotionDatabaseSchema`
+> - `notion.mapper.ts` — added `buildDefaultStatusMapping`
+> - `notion.service.ts` — added `getDefaultStatusMappingService`
+> - `notion.controller.ts` — added `getDefaultStatusMappingController`
+> - `notion.routes.ts` — registered `GET /:projectId/status-mapping/default`
+>
+> **Verified:**
+> - No `any` types used
+> - Notion token decrypted in service only, never logged
+> - Route protected with `requireRoleMiddleware('TEAM_LEADER')`
+> - Unknown Notion statuses default to `TODO`
+> - Existing save-mapping endpoint untouched
+>
+> **Tested:**
+> - `npx tsc --noEmit` — 0 errors
+> - `npx vitest run src/features/notion/notion.test.ts` — 6 passed, 0 failed
+>   - ✓ returns pre-filled status mapping for connected project
+>   - ✓ unknown Notion statuses default to TODO
+>   - ✓ returns 400 when project has no Notion connection
+>   - ✓ returns 404 when project not found
+>   - ✓ returns 401 when unauthenticated
+>   - ✓ returns 403 when role is not TEAM_LEADER
+>
+> **Confidence:** High. The only uncertainty is whether some Notion workspaces use a property name other than `Status` — this is noted in the plan's context block.
+>
+> **Next:** Phase 2 — auto feature mapping in the sync worker.
+>
+> Confirm to proceed?
+
+---
+
+## 10. End of Session
 
 Before ending any session:
 
